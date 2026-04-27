@@ -1,20 +1,22 @@
 import { Link } from "react-router-dom";
-import { companyInfo } from "../data/initialData";
 import { useData } from "../context/DataContext";
 
 export default function Footer() {
-  const { categories } = useData();
+  const { categories, company } = useData();
   return (
     <footer className="bg-slate-900 text-slate-300 mt-20">
       <div className="container mx-auto px-4 py-12 grid gap-10 md:grid-cols-4">
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-brand-600 text-white font-bold">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-primary-600 text-white font-bold">
               IMT
             </span>
-            <p className="font-bold text-white">{companyInfo.name}</p>
+            <p className="font-bold text-white">
+              {company.shortName || "IMT Karoseri"}
+            </p>
           </div>
-          <p className="text-sm leading-relaxed">{companyInfo.tagline}</p>
+          <p className="text-sm font-semibold text-white">{company.name}</p>
+          <p className="mt-2 text-sm leading-relaxed">{company.tagline}</p>
         </div>
 
         <div>
@@ -51,31 +53,28 @@ export default function Footer() {
                 Kontak
               </Link>
             </li>
-            <li>
-              <Link to="/admin" className="hover:text-white">
-                Admin Panel
-              </Link>
-            </li>
           </ul>
         </div>
 
         <div>
           <p className="font-semibold text-white mb-3">Hubungi Kami</p>
           <ul className="space-y-2 text-sm">
-            <li>{companyInfo.address}</li>
-            <li>Telp: {companyInfo.phone}</li>
-            <li>Email: {companyInfo.email}</li>
-            <li>{companyInfo.hours}</li>
+            {company.address?.split(",").map((line, i) => (
+              <li key={i}>{line.trim()}</li>
+            ))}
+            <li>Telp / WA: {company.whatsapp || company.phone}</li>
+            <li>Email: {company.email}</li>
+            <li>{company.hours}</li>
           </ul>
         </div>
       </div>
       <div className="border-t border-slate-800">
         <div className="container mx-auto px-4 py-4 text-xs text-slate-500 flex flex-col md:flex-row justify-between gap-2">
           <p>
-            &copy; {new Date().getFullYear()} {companyInfo.name}. All rights
+            &copy; {new Date().getFullYear()} {company.name}. All rights
             reserved.
           </p>
-          <p>Built for showcase purpose.</p>
+          <p>Powered by Firebase &amp; Vercel.</p>
         </div>
       </div>
     </footer>

@@ -1,23 +1,22 @@
 import { useState } from "react";
-import { Link, NavLink, useLocation } from "react-router-dom";
-import { companyInfo } from "../data/initialData";
+import { Link, NavLink } from "react-router-dom";
+import { useData } from "../context/DataContext";
 
 const links = [
   { to: "/", label: "Beranda", end: true },
   { to: "/produk", label: "Produk" },
   { to: "/katalog", label: "Katalog" },
   { to: "/kontak", label: "Kontak" },
-  { to: "/admin", label: "Admin" },
 ];
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
-  const { pathname } = useLocation();
+  const { company } = useData();
 
   const linkClass = ({ isActive }) =>
     `px-3 py-2 rounded-md text-sm font-medium transition ${
       isActive
-        ? "bg-brand-600 text-white"
+        ? "bg-primary-600 text-white"
         : "text-slate-700 hover:bg-slate-100"
     }`;
 
@@ -29,11 +28,13 @@ export default function Navbar() {
           className="flex items-center gap-2"
           onClick={() => setOpen(false)}
         >
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-brand-600 text-white font-bold">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-primary-600 text-white font-bold">
             IMT
           </span>
           <div className="leading-tight">
-            <p className="font-bold text-slate-900">{companyInfo.name}</p>
+            <p className="font-bold text-slate-900">
+              {company.shortName || "IMT Karoseri"}
+            </p>
             <p className="text-[11px] text-slate-500 -mt-0.5">
               Karoseri Custom Indonesia
             </p>
@@ -83,7 +84,7 @@ export default function Navbar() {
                 className={({ isActive }) =>
                   `py-2 px-2 rounded-md text-sm font-medium ${
                     isActive
-                      ? "text-brand-700 bg-brand-50"
+                      ? "text-primary-700 bg-primary-50"
                       : "text-slate-700 hover:bg-slate-100"
                   }`
                 }

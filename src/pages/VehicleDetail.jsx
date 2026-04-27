@@ -2,11 +2,11 @@ import { Link, useParams } from "react-router-dom";
 import { useData } from "../context/DataContext";
 import Slideshow from "../components/Slideshow";
 import SpecTable from "../components/SpecTable";
-import { companyInfo } from "../data/initialData";
+import { trackEvent } from "../firebase/config";
 
 export default function VehicleDetail() {
   const { id } = useParams();
-  const { vehicles, categories } = useData();
+  const { vehicles, categories, company } = useData();
   const vehicle = vehicles.find((v) => v.id === id);
 
   if (!vehicle) {
@@ -99,8 +99,14 @@ export default function VehicleDetail() {
 
           <div className="mt-8 flex flex-wrap gap-3">
             <a
-              href={`https://wa.me/${companyInfo.phone.replace(/\D/g, "")}?text=${encodeURIComponent(
-                `Halo IMT Karoseri, saya tertarik dengan unit "${vehicle.name}". Mohon informasinya.`
+              onClick={() =>
+                trackEvent("whatsapp_click", {
+                  source: "vehicle_detail",
+                  vehicle_id: vehicle.id,
+                })
+              }
+              href={`https://wa.me/${(company.whatsapp || company.phone || "").replace(/\D/g, "")}?text=${encodeURIComponent(
+                `Halo ${company.shortName || company.name}, saya tertarik dengan unit "${vehicle.name}". Mohon informasinya.`
               )}`}
               target="_blank"
               rel="noreferrer"

@@ -1,10 +1,10 @@
 import { Link } from "react-router-dom";
 import { useData } from "../context/DataContext";
 import VehicleCard from "../components/VehicleCard";
-import { companyInfo } from "../data/initialData";
+import YouTubeSection from "../components/YouTubeSection";
 
 export default function Home() {
-  const { categories, vehicles } = useData();
+  const { categories, vehicles, company } = useData();
   const categoryById = Object.fromEntries(categories.map((c) => [c.id, c]));
   const featured = vehicles.slice(0, 6);
 
@@ -15,12 +15,12 @@ export default function Home() {
           className="absolute inset-0 opacity-30"
           style={{
             backgroundImage:
-              "radial-gradient(circle at 20% 20%, #dc2626 0%, transparent 50%), radial-gradient(circle at 80% 80%, #1d4ed8 0%, transparent 50%)",
+              "radial-gradient(circle at 20% 20%, #00428f 0%, transparent 50%), radial-gradient(circle at 80% 80%, #feae00 0%, transparent 60%)",
           }}
         />
         <div className="relative container mx-auto px-4 py-20 md:py-28 grid md:grid-cols-2 gap-10 items-center">
           <div>
-            <span className="inline-block bg-brand-600/20 text-brand-100 text-xs font-semibold uppercase tracking-wider px-3 py-1 rounded-full">
+            <span className="inline-block bg-secondary-500/20 text-secondary-300 text-xs font-semibold uppercase tracking-wider px-3 py-1 rounded-full">
               Karoseri Custom Built
             </span>
             <h1 className="mt-4 text-4xl md:text-5xl font-extrabold leading-tight">
@@ -28,13 +28,14 @@ export default function Home() {
             </h1>
             <p className="mt-5 text-lg text-slate-300 max-w-xl">
               Dari ambulance standar Kemenkes, mobil pemadam, rantis taktis,
-              hingga food truck dan SNG broadcasting van — {companyInfo.name}{" "}
-              merancang & memproduksi sesuai kebutuhan operasional Anda.
+              hingga food truck dan SNG broadcasting van —{" "}
+              {company.shortName || company.name} merancang & memproduksi
+              sesuai kebutuhan operasional Anda.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 to="/produk"
-                className="inline-flex items-center px-5 py-3 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold"
+                className="inline-flex items-center px-5 py-3 rounded-lg bg-secondary-500 hover:bg-secondary-600 text-black font-semibold"
               >
                 Lihat Semua Produk
               </Link>
@@ -73,6 +74,12 @@ export default function Home() {
         </div>
       </section>
 
+      <YouTubeSection
+        url={company.youtubeUrl}
+        title={company.youtubeSectionTitle || "Lihat Karya Kami di YouTube"}
+        subtitle={company.youtubeSectionSubtitle}
+      />
+
       <section className="container mx-auto px-4 py-16">
         <SectionHeader
           eyebrow="Kategori"
@@ -84,13 +91,13 @@ export default function Home() {
             <Link
               key={c.id}
               to={`/produk/kategori/${c.slug}`}
-              className="group p-6 rounded-2xl bg-white border border-slate-200 hover:border-brand-300 hover:shadow-lg transition"
+              className="group p-6 rounded-2xl bg-white border border-slate-200 hover:border-primary-300 hover:shadow-lg transition"
             >
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-slate-900 group-hover:text-brand-700">
+                <h3 className="text-lg font-bold text-slate-900 group-hover:text-primary-700">
                   {c.name}
                 </h3>
-                <span className="text-brand-600 text-xl">→</span>
+                <span className="text-secondary-500 text-xl">→</span>
               </div>
               <p className="mt-2 text-sm text-slate-600">{c.description}</p>
               <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -111,7 +118,7 @@ export default function Home() {
             cta={
               <Link
                 to="/produk"
-                className="text-sm font-semibold text-brand-700 hover:underline"
+                className="text-sm font-semibold text-primary-700 hover:underline"
               >
                 Semua produk →
               </Link>
@@ -130,12 +137,12 @@ export default function Home() {
       </section>
 
       <section className="container mx-auto px-4 py-16">
-        <div className="rounded-3xl bg-gradient-to-r from-brand-700 to-brand-900 text-white p-10 md:p-14 grid md:grid-cols-3 gap-8 items-center">
+        <div className="rounded-3xl bg-gradient-to-r from-primary-700 to-primary-900 text-white p-10 md:p-14 grid md:grid-cols-3 gap-8 items-center">
           <div className="md:col-span-2">
             <h3 className="text-2xl md:text-3xl font-bold">
               Butuh konfigurasi khusus?
             </h3>
-            <p className="mt-3 text-brand-50/90">
+            <p className="mt-3 text-primary-50/90">
               Tim engineering kami siap mendampingi dari konsep, desain CAD,
               prototyping, hingga uji homologasi. Sampaikan kebutuhan Anda dan
               kami akan menyiapkan proposal teknis & komersial.
@@ -144,7 +151,7 @@ export default function Home() {
           <div className="flex md:justify-end">
             <Link
               to="/kontak"
-              className="inline-flex items-center px-6 py-3 rounded-lg bg-white text-brand-700 font-semibold hover:bg-brand-50"
+              className="inline-flex items-center px-6 py-3 rounded-lg bg-secondary-500 hover:bg-secondary-600 text-black font-semibold"
             >
               Konsultasi Sekarang
             </Link>
@@ -168,7 +175,7 @@ function SectionHeader({ eyebrow, title, subtitle, cta }) {
   return (
     <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-widest text-brand-700">
+        <p className="text-xs font-semibold uppercase tracking-widest text-primary-700">
           {eyebrow}
         </p>
         <h2 className="mt-1 text-2xl md:text-3xl font-bold text-slate-900">
