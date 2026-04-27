@@ -1,56 +1,59 @@
-import React, { useState } from "react";
-import { vehicles } from "./data";
-import "./App.css";
+import { useEffect } from "react";
+import { Route, Routes, useLocation } from "react-router-dom";
+import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
+import Home from "./pages/Home";
+import Products from "./pages/Products";
+import VehicleDetail from "./pages/VehicleDetail";
+import Catalog from "./pages/Catalog";
+import Contact from "./pages/Contact";
+import Admin from "./pages/Admin";
+import AdminCategories from "./pages/admin/AdminCategories";
+import AdminVehicles from "./pages/admin/AdminVehicles";
 
-const categories = ["All", "Ambulance", "Fire Truck", "Police Car"];
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [pathname]);
+  return null;
+}
 
-function App() {
-  const [filter, setFilter] = useState("All");
-  const filteredVehicles =
-    filter === "All"
-      ? vehicles
-      : vehicles.filter((v) => v.category === filter);
-
+function NotFound() {
   return (
-    <div className="min-h-screen bg-gray-100 text-gray-900">
-      <header className="bg-blue-800 text-white py-6 shadow">
-        <div className="container mx-auto px-4">
-          <h1 className="text-3xl font-bold">Custom Vehicle Catalogue</h1>
-          <p className="text-sm mt-1">Ambulance, Fire Trucks, Police Cars & More</p>
-        </div>
-      </header>
-
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex gap-2 mb-6">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              className={\`px-4 py-2 border rounded \${filter === cat ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'}\`}
-              onClick={() => setFilter(cat)}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredVehicles.map((v) => (
-            <div key={v.id} className="bg-white rounded-xl shadow overflow-hidden">
-              <img src={v.image} alt={v.name} className="w-full h-48 object-cover" />
-              <div className="p-4">
-                <h3 className="text-xl font-semibold">{v.name}</h3>
-                <p className="text-sm text-gray-600">{v.description}</p>
-                <p className="text-sm mt-2">💡 Features: {v.features.join(", ")}</p>
-                <button className="mt-4 w-full bg-blue-600 text-white px-4 py-2 rounded">
-                  Contact Us
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+    <div className="container mx-auto px-4 py-24 text-center">
+      <p className="text-6xl font-extrabold text-brand-600">404</p>
+      <h1 className="mt-4 text-2xl font-bold text-slate-900">
+        Halaman tidak ditemukan
+      </h1>
+      <p className="mt-2 text-slate-600">
+        URL yang Anda buka mungkin sudah berubah atau dihapus.
+      </p>
     </div>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
+      <ScrollToTop />
+      <Navbar />
+      <main className="flex-1">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/produk" element={<Products />} />
+          <Route path="/produk/kategori/:slug" element={<Products />} />
+          <Route path="/produk/:id" element={<VehicleDetail />} />
+          <Route path="/katalog" element={<Catalog />} />
+          <Route path="/kontak" element={<Contact />} />
+          <Route path="/admin" element={<Admin />}>
+            <Route path="kategori" element={<AdminCategories />} />
+            <Route path="kendaraan" element={<AdminVehicles />} />
+          </Route>
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </main>
+      <Footer />
+    </div>
+  );
+}
