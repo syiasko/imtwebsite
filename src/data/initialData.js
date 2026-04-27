@@ -243,11 +243,35 @@ export const initialVehicles = [
   },
 ];
 
-export const companyInfo = {
-  name: "IMT Karoseri",
+// Default address used to auto-build a Google Maps embed when admin hasn't set a custom one.
+const defaultAddress =
+  "Kp. Babakan Rawahaur No. 100, Babakan Madang, Sentul, Jawa Barat 16810";
+
+export const initialCompanySettings = {
+  name: "PT. INDRAPRASTA MULIA TEKNIK",
+  shortName: "IMT Karoseri",
   tagline: "Spesialis Karoseri Kendaraan Khusus & Custom Built Indonesia",
-  phone: "+62 21 5555 8888",
-  email: "info@imtkaroseri.co.id",
-  address: "Jl. Raya Industri No. 88, Bekasi, Jawa Barat 17530",
+  phone: "081322315332",
+  whatsapp: "081322315332",
+  email: "rtnayulstr@gmail.com",
+  address: defaultAddress,
   hours: "Senin - Sabtu, 08.00 - 17.00 WIB",
+  // YouTube: paste a video URL, playlist URL, or channel URL.
+  youtubeUrl: "https://www.youtube.com/@Karoseri100",
+  youtubeSectionTitle: "Lihat Karya Kami di YouTube",
+  youtubeSectionSubtitle:
+    "Saksikan langsung proses produksi & hasil unit kendaraan khusus kami.",
+  // Maps
+  mapsShareUrl: "https://maps.app.goo.gl/ten5WKJodV3D2RHk6",
+  mapsEmbedUrl: `https://maps.google.com/maps?q=${encodeURIComponent(
+    defaultAddress
+  )}&output=embed`,
+  // Catalog PDF (data URL or external URL). Empty string => fall back to print catalog.
+  catalogPdfUrl: "",
+  catalogPdfName: "",
+  // Admin password: empty means default ("imt-admin") is accepted until admin sets one.
+  passwordHash: "",
 };
+
+// Backwards-compat export for any older import sites.
+export const companyInfo = initialCompanySettings;
