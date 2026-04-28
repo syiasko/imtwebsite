@@ -32,25 +32,16 @@ Single-page React app untuk showcase **PT. INDRAPRASTA MULIA TEKNIK** (IMT Karos
 
 Project sudah hard-code ke `imtwebsite-ddf59`. Yang perlu dilakukan di Firebase Console:
 
-1. **Firestore Database** → Create Database → Production mode (atau test mode untuk dev cepat)
-2. **Authentication** → Sign-in method → **Anonymous** → Enable
-3. **Firestore Rules** → paste dari `firestore.rules` atau:
+1. **Authentication** → Sign-in method → **Anonymous** → Enable
+2. **Firestore Database** → Create Database → Production mode
+3. **Firestore Rules** → paste dari `firestore.rules`
+4. **Storage** → Get started → pilih region → Production mode
+5. **Storage Rules** → paste dari `storage.rules` (public read, auth write, max 1.5MB per file)
+6. **Analytics** sudah otomatis aktif via `measurementId`
 
-   ```
-   rules_version = '2';
-   service cloud.firestore {
-     match /databases/{database}/documents {
-       match /{collection}/{id} {
-         allow read: if true;
-         allow write: if request.auth != null;
-       }
-     }
-   }
-   ```
+Saat pertama kali user membuka website, app akan auto-seed Firestore dengan data default.
 
-4. **Analytics** sudah otomatis aktif via `measurementId` di config
-
-Saat pertama kali user membuka website, app akan auto-seed Firestore dengan data default (6 kategori + contoh unit + company settings).
+> Foto kendaraan disimpan di Firebase Storage di path `vehicles/{vehicleId}/{file}`. Saat tambah/hapus foto via admin panel, file akan otomatis ter-upload/dihapus.
 
 ## Cara menjalankan
 
@@ -94,5 +85,5 @@ Lihat data di **Firebase Console → Analytics** atau Google Analytics dashboard
 
 ## Catatan
 
-- Foto kendaraan disimpan sebagai data URL di Firestore (max ~700KB per foto). Untuk gambar lebih besar atau koleksi banyak, sebaiknya migrate ke Firebase Storage.
+- Foto kendaraan disimpan di **Firebase Storage** (`vehicles/{id}/...`); Firestore hanya menyimpan URL-nya. Auto-compress kalau file > 1MB. Maks **10 foto per unit, 1 MB per foto** (≈10 MB per unit).
 - PDF katalog max 800KB jika diupload langsung; lebih dari itu paste URL eksternal (Google Drive, Dropbox, dll).

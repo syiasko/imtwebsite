@@ -1,26 +1,22 @@
-// Canvas-based image compression. Targets a base64-encoded data URL size
-// (since that's what we ultimately store in Firestore, capped at ~1MB/doc).
-//
-// Strategy: load the file as an Image, draw onto a canvas, encode as JPEG with
-// stepping quality, and shrink dimensions when quality alone isn't enough.
+// Canvas-based image compression. Target the binary size (the file we upload
+// to Firebase Storage), not base64, since we no longer store images inline.
 
-const DEFAULT_MAX_BYTES = 700 * 1024; // ~700KB target after base64 inflation
-const DEFAULT_MAX_DIM = 1920;
+const DEFAULT_MAX_BYTES = 1024 * 1024; // 1 MB binary
+const DEFAULT_MAX_DIM = 2048;
 
-const readFileAsDataURL = (file) =>
+const loadImageFromBlob = (blob) =>
   new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(reader.error || new Error("File read failed"));
-    reader.readAsDataURL(file);
-  });
-
-const loadImage = (src) =>
-  new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
     const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("Image decode failed"));
-    img.src = src;
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Image decode failed"));
+    };
+    img.src = url;
   });
 
 const canvasToBlob = (canvas, type, quality) =>
@@ -30,14 +26,6 @@ const canvasToBlob = (canvas, type, quality) =>
       type,
       quality
     );
-  });
-
-const blobToDataURL = (blob) =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(reader.error || new Error("Blob read failed"));
-    reader.readAsDataURL(blob);
   });
 
 const renderToCanvas = (img, dim) => {
@@ -54,9 +42,6 @@ const renderToCanvas = (img, dim) => {
   return canvas;
 };
 
-// base64 inflation factor: 4 bytes for every 3 binary bytes, plus ~30 char prefix.
-const estimateBase64Size = (binarySize) => Math.ceil(binarySize * 1.37) + 30;
-
 export async function compressImage(file, opts = {}) {
   const {
     maxBytes = DEFAULT_MAX_BYTES,
@@ -69,63 +54,71 @@ export async function compressImage(file, opts = {}) {
   }
 
   onProgress?.(5);
-  const sourceDataUrl = await readFileAsDataURL(file);
-  onProgress?.(20);
 
-  // Tiny image already under target: keep original encoding (preserves PNG transparency etc).
-  if (estimateBase64Size(file.size) <= maxBytes) {
+  // Already small enough? return original blob (preserves PNG transparency, animated GIFs, etc).
+  if (file.size <= maxBytes) {
     onProgress?.(100);
     return {
-      dataUrl: sourceDataUrl,
+      blob: file,
       compressed: false,
       originalSize: file.size,
-      finalSize: sourceDataUrl.length,
+      finalSize: file.size,
+      ext: extFromType(file.type),
     };
   }
 
-  const img = await loadImage(sourceDataUrl);
-  onProgress?.(40);
+  const img = await loadImageFromBlob(file);
+  onProgress?.(30);
 
   let dim = Math.min(maxDim, Math.max(img.width, img.height));
   let quality = 0.9;
   let lastBlob = null;
   let attempts = 0;
-  const maxAttempts = 10;
+  const maxAttempts = 12;
 
   while (attempts < maxAttempts) {
     const canvas = renderToCanvas(img, dim);
     const blob = await canvasToBlob(canvas, "image/jpeg", quality);
     lastBlob = blob;
-    const estimated = estimateBase64Size(blob.size);
 
-    if (estimated <= maxBytes) break;
+    if (blob.size <= maxBytes) break;
 
     if (quality > 0.55) {
       quality = Math.max(0.55, quality - 0.1);
-    } else if (dim > 480) {
+    } else if (dim > 640) {
       dim = Math.round(dim * 0.85);
       quality = 0.78;
     } else {
-      // Final fallback: aggressive shrink + low quality
-      dim = Math.max(360, Math.round(dim * 0.8));
+      dim = Math.max(480, Math.round(dim * 0.85));
       quality = Math.max(0.45, quality - 0.05);
     }
 
     attempts += 1;
-    onProgress?.(40 + Math.min(50, attempts * 5));
+    onProgress?.(30 + Math.min(60, attempts * 5));
   }
 
   onProgress?.(95);
-  const finalDataUrl = await blobToDataURL(lastBlob);
-  onProgress?.(100);
 
   return {
-    dataUrl: finalDataUrl,
+    blob: lastBlob,
     compressed: true,
     originalSize: file.size,
-    finalSize: finalDataUrl.length,
+    finalSize: lastBlob.size,
+    ext: "jpg",
   };
 }
+
+const extFromType = (type) => {
+  if (!type) return "bin";
+  const map = {
+    "image/jpeg": "jpg",
+    "image/jpg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+  };
+  return map[type] || (type.split("/")[1] || "bin");
+};
 
 export const formatBytes = (bytes) => {
   if (!bytes && bytes !== 0) return "?";

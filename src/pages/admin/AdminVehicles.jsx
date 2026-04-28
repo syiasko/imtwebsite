@@ -1,12 +1,15 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useData } from "../../context/DataContext";
 import { useToast } from "../../context/ToastContext";
+import { compressImage, formatBytes } from "../../utils/imageCompression";
 import {
-  compressImage,
-  formatBytes,
-} from "../../utils/imageCompression";
+  deleteVehicleImage,
+  isStorageUrl,
+  uploadVehicleImage,
+} from "../../firebase/storage";
 
 const MAX_IMAGES = 10;
+const MAX_BYTES_PER_IMAGE = 1024 * 1024; // 1 MB
 
 const emptyDraft = {
   id: "",
@@ -56,8 +59,6 @@ export default function AdminVehicles() {
       throw new Error("Nama unit dan kategori wajib diisi.");
     }
     const saved = await upsertVehicle(formDraft);
-    // Stay in edit mode: if it was a new vehicle, transition to its id so the
-    // form re-mounts as edit (saved data already reflected).
     setDraft({
       ...saved,
       images: [...(saved.images || [])],
@@ -68,11 +69,14 @@ export default function AdminVehicles() {
   };
 
   const onDelete = (v) => {
-    if (window.confirm(`Hapus unit "${v.name}"?`)) {
-      deleteVehicle(v.id);
-      if (draft.id === v.id) startNew();
-      toast.info(`Unit "${v.name}" dihapus.`);
-    }
+    if (!window.confirm(`Hapus unit "${v.name}"?`)) return;
+    // Best-effort cleanup of Storage objects.
+    (v.images || []).forEach((url) => {
+      if (isStorageUrl(url)) deleteVehicleImage(url).catch(() => {});
+    });
+    deleteVehicle(v.id);
+    if (draft.id === v.id) startNew();
+    toast.info(`Unit "${v.name}" dihapus.`);
   };
 
   return (
@@ -181,6 +185,16 @@ function VehicleForm({
   const [pending, setPending] = useState([]);
   const [saving, setSaving] = useState(false);
 
+  // Stable id for storage path. New vehicles get a generated id used for
+  // both the Firestore doc and the Storage folder so files & doc match up.
+  const formIdRef = useRef(null);
+  if (formIdRef.current === null) {
+    formIdRef.current =
+      draft.id ||
+      `v-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+  }
+  const vehicleId = formIdRef.current;
+
   const totalImages = draft.images.length + pending.length;
   const slotsLeft = MAX_IMAGES - totalImages;
   const isUploading = pending.some((p) => !p.error);
@@ -205,6 +219,7 @@ function VehicleForm({
       name: file.name,
       size: file.size,
       progress: 0,
+      phase: "compress",
       error: null,
       file,
     }));
@@ -214,24 +229,52 @@ function VehicleForm({
     await Promise.all(
       entries.map(async (entry) => {
         try {
-          const result = await compressImage(entry.file, {
+          // Phase 1: compress (40% of progress bar)
+          const compressResult = await compressImage(entry.file, {
+            maxBytes: MAX_BYTES_PER_IMAGE,
             onProgress: (p) =>
               setPending((prev) =>
                 prev.map((x) =>
-                  x.tempId === entry.tempId ? { ...x, progress: p } : x
+                  x.tempId === entry.tempId
+                    ? { ...x, progress: p * 0.4, phase: "compress" }
+                    : x
                 )
               ),
           });
+
+          // Phase 2: upload to Storage (60%)
+          setPending((prev) =>
+            prev.map((x) =>
+              x.tempId === entry.tempId
+                ? { ...x, phase: "upload", progress: 40 }
+                : x
+            )
+          );
+          const { url } = await uploadVehicleImage({
+            vehicleId,
+            blob: compressResult.blob,
+            ext: compressResult.ext,
+            onProgress: (p) =>
+              setPending((prev) =>
+                prev.map((x) =>
+                  x.tempId === entry.tempId
+                    ? { ...x, progress: 40 + p * 0.6, phase: "upload" }
+                    : x
+                )
+              ),
+          });
+
           setDraft((prev) => ({
             ...prev,
-            images: [...prev.images, result.dataUrl],
+            images: [...prev.images, url],
           }));
           setPending((prev) => prev.filter((x) => x.tempId !== entry.tempId));
-          if (result.compressed) {
+
+          if (compressResult.compressed) {
             toast.info(
-              `${entry.name}: dikompres dari ${formatBytes(
-                result.originalSize
-              )} → ${formatBytes(result.finalSize)}.`,
+              `${entry.name}: dikompres ${formatBytes(
+                compressResult.originalSize
+              )} → ${formatBytes(compressResult.finalSize)}.`,
               { duration: 4500 }
             );
           }
@@ -239,11 +282,11 @@ function VehicleForm({
           setPending((prev) =>
             prev.map((x) =>
               x.tempId === entry.tempId
-                ? { ...x, error: err.message || "Gagal memproses gambar" }
+                ? { ...x, error: err.message || "Gagal upload" }
                 : x
             )
           );
-          toast.error(`${entry.name}: ${err.message || "Gagal memproses"}.`);
+          toast.error(`${entry.name}: ${err.message || "Gagal upload"}.`);
         }
       })
     );
@@ -260,11 +303,14 @@ function VehicleForm({
     if (url) setDraft((prev) => ({ ...prev, images: [...prev.images, url] }));
   };
 
-  const removeImage = (i) =>
+  const removeImage = (i) => {
+    const url = draft.images[i];
     setDraft((prev) => ({
       ...prev,
       images: prev.images.filter((_, idx) => idx !== i),
     }));
+    if (isStorageUrl(url)) deleteVehicleImage(url).catch(() => {});
+  };
 
   const dismissPending = (id) =>
     setPending((prev) => prev.filter((p) => p.tempId !== id));
@@ -282,7 +328,8 @@ function VehicleForm({
     setSaving(true);
     try {
       const wasEditing = editing;
-      await onSave(draft);
+      // Ensure the saved doc id matches the storage folder.
+      await onSave({ ...draft, id: vehicleId });
       toast.success(
         wasEditing ? "Perubahan tersimpan." : `Unit "${draft.name}" ditambahkan.`
       );
@@ -481,14 +528,14 @@ function VehicleForm({
           )}
           {slotsLeft <= 0 && (
             <p className="text-xs text-secondary-700 bg-secondary-50 border border-secondary-200 rounded px-3 py-2">
-              Sudah mencapai batas maksimal {MAX_IMAGES} foto. Hapus salah satu
-              untuk mengganti.
+              Sudah mencapai batas maksimal {MAX_IMAGES} foto. Hapus salah
+              satu untuk mengganti.
             </p>
           )}
         </div>
         <p className="mt-1.5 text-xs text-slate-500">
-          Bulk upload didukung — pilih beberapa foto sekaligus. Foto besar otomatis
-          dikompres agar muat di Firestore.
+          Bulk upload didukung — pilih beberapa foto sekaligus. Foto besar
+          otomatis dikompres ke ≤1 MB sebelum upload ke Firebase Storage.
         </p>
       </div>
 
@@ -606,7 +653,8 @@ function VehicleForm({
 }
 
 function PendingTile({ pending, onDismiss }) {
-  const { progress, error, name } = pending;
+  const { progress, error, name, phase } = pending;
+  const phaseLabel = phase === "upload" ? "Upload" : "Kompres";
   return (
     <div className="relative aspect-[4/3] rounded-md overflow-hidden border-2 border-dashed border-slate-300 bg-slate-50 grid place-items-center">
       <div className="text-center px-2">
@@ -626,10 +674,12 @@ function PendingTile({ pending, onDismiss }) {
             <div className="mt-1.5 h-1 w-16 mx-auto bg-slate-200 rounded-full overflow-hidden">
               <div
                 className="h-full bg-primary-600 transition-all"
-                style={{ width: `${progress}%` }}
+                style={{ width: `${Math.min(100, Math.round(progress))}%` }}
               />
             </div>
-            <p className="text-[10px] text-slate-400 mt-0.5">{progress}%</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">
+              {phaseLabel} {Math.round(progress)}%
+            </p>
           </>
         )}
       </div>

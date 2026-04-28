@@ -1,0 +1,19 @@
+rules_version = '2';
+
+// Firebase Storage rules for IMT Karoseri:
+// - Public read on every vehicle photo (so visitors can see images on the site)
+// - Authenticated write only — the app provisions an anonymous Firebase Auth
+//   session via signInAnonymously() before uploads, so admin uploads work
+//   while drive-by visitors can't write.
+//
+// Deploy via: firebase deploy --only storage
+// or paste into Firebase Console → Storage → Rules.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /vehicles/{vehicleId}/{file=**} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.resource.size < 1.5 * 1024 * 1024;
+    }
+  }
+}

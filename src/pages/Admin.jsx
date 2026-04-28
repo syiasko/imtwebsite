@@ -29,7 +29,6 @@ export default function Admin() {
     authStatus,
     authError,
     firestoreError,
-    resetData,
   } = useData();
   const { pathname } = useLocation();
 
@@ -81,16 +80,6 @@ export default function Admin() {
     sessionStorage.removeItem(SESSION_USER_KEY);
     sessionStorage.removeItem(SESSION_USERNAME_KEY);
     setAuthed(false);
-  };
-
-  const onReset = () => {
-    if (
-      window.confirm(
-        "Reset data ke kondisi awal? Kategori, kendaraan, dan pengaturan default akan ditulis ulang."
-      )
-    ) {
-      resetData();
-    }
   };
 
   if (loading) {
@@ -214,12 +203,6 @@ export default function Admin() {
           </p>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={onReset}
-            className="px-3 py-2 rounded-lg text-sm font-medium border border-slate-300 text-slate-700 hover:bg-slate-50"
-          >
-            Reset Data
-          </button>
           <button
             onClick={onLogout}
             className="px-3 py-2 rounded-lg text-sm font-medium bg-slate-900 text-white hover:bg-slate-700"
