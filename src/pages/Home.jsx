@@ -1,12 +1,16 @@
 import { Link } from "react-router-dom";
 import { useData } from "../context/DataContext";
+import { useT } from "../context/LanguageContext";
 import VehicleCard from "../components/VehicleCard";
 import YouTubeSection from "../components/YouTubeSection";
+import CatalogDownloadButton from "../components/CatalogDownloadButton";
 
 export default function Home() {
   const { categories, vehicles, company } = useData();
+  const { t } = useT();
   const categoryById = Object.fromEntries(categories.map((c) => [c.id, c]));
   const featured = vehicles.slice(0, 6);
+  const brand = company.shortName || company.name;
 
   return (
     <div>
@@ -21,35 +25,29 @@ export default function Home() {
         <div className="relative container mx-auto px-4 py-20 md:py-28 grid md:grid-cols-2 gap-10 items-center">
           <div>
             <span className="inline-block bg-secondary-500/20 text-secondary-300 text-xs font-semibold uppercase tracking-wider px-3 py-1 rounded-full">
-              Karoseri Custom Built
+              {t("hero.eyebrow")}
             </span>
             <h1 className="mt-4 text-4xl md:text-5xl font-extrabold leading-tight">
-              Kendaraan Khusus, Dibangun Presisi untuk Misi Anda.
+              {t("hero.title")}
             </h1>
             <p className="mt-5 text-lg text-slate-300 max-w-xl">
-              Dari ambulance standar Kemenkes, mobil pemadam, rantis taktis,
-              hingga food truck dan SNG broadcasting van —{" "}
-              {company.shortName || company.name} merancang & memproduksi
-              sesuai kebutuhan operasional Anda.
+              {t("hero.subtitle", { brand })}
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 to="/produk"
                 className="inline-flex items-center px-5 py-3 rounded-lg bg-secondary-500 hover:bg-secondary-600 text-black font-semibold"
               >
-                Lihat Semua Produk
+                {t("hero.ctaProducts")}
               </Link>
-              <Link
-                to="/katalog"
-                className="inline-flex items-center px-5 py-3 rounded-lg bg-white/10 hover:bg-white/20 text-white font-semibold border border-white/20"
-              >
-                Download Katalog
-              </Link>
+              <CatalogDownloadButton className="inline-flex items-center px-5 py-3 rounded-lg bg-white/10 hover:bg-white/20 text-white font-semibold border border-white/20">
+                {t("hero.ctaCatalog")}
+              </CatalogDownloadButton>
             </div>
             <div className="mt-10 grid grid-cols-3 gap-6 max-w-md">
-              <Stat value={`${vehicles.length}+`} label="Unit dirancang" />
-              <Stat value={`${categories.length}`} label="Kategori produk" />
-              <Stat value="20+" label="Tahun pengalaman" />
+              <Stat value={`${vehicles.length}+`} label={t("hero.statUnits")} />
+              <Stat value={`${categories.length}`} label={t("hero.statCategories")} />
+              <Stat value="20+" label={t("hero.statExperience")} />
             </div>
           </div>
 
@@ -76,15 +74,15 @@ export default function Home() {
 
       <YouTubeSection
         url={company.youtubeUrl}
-        title={company.youtubeSectionTitle || "Lihat Karya Kami di YouTube"}
+        title={company.youtubeSectionTitle || t("youtube.defaultTitle")}
         subtitle={company.youtubeSectionSubtitle}
       />
 
       <section className="container mx-auto px-4 py-16">
         <SectionHeader
-          eyebrow="Kategori"
-          title="Lini Produk Karoseri"
-          subtitle="Setiap unit dapat dikustomisasi sesuai standar operasional dan branding klien."
+          eyebrow={t("section.categoriesEyebrow")}
+          title={t("section.categoriesTitle")}
+          subtitle={t("section.categoriesSubtitle")}
         />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-8">
           {categories.map((c) => (
@@ -101,8 +99,9 @@ export default function Home() {
               </div>
               <p className="mt-2 text-sm text-slate-600">{c.description}</p>
               <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                {vehicles.filter((v) => v.categoryId === c.id).length} unit
-                tersedia
+                {t("section.unitsAvailable", {
+                  count: vehicles.filter((v) => v.categoryId === c.id).length,
+                })}
               </p>
             </Link>
           ))}
@@ -112,15 +111,15 @@ export default function Home() {
       <section className="bg-slate-50 py-16">
         <div className="container mx-auto px-4">
           <SectionHeader
-            eyebrow="Showcase"
-            title="Unit Unggulan"
-            subtitle="Beberapa unit yang sering kami produksi. Klik untuk melihat spesifikasi lengkap."
+            eyebrow={t("section.showcaseEyebrow")}
+            title={t("section.showcaseTitle")}
+            subtitle={t("section.showcaseSubtitle")}
             cta={
               <Link
                 to="/produk"
                 className="text-sm font-semibold text-primary-700 hover:underline"
               >
-                Semua produk →
+                {t("section.allProducts")}
               </Link>
             }
           />
@@ -140,20 +139,16 @@ export default function Home() {
         <div className="rounded-3xl bg-gradient-to-r from-primary-700 to-primary-900 text-white p-10 md:p-14 grid md:grid-cols-3 gap-8 items-center">
           <div className="md:col-span-2">
             <h3 className="text-2xl md:text-3xl font-bold">
-              Butuh konfigurasi khusus?
+              {t("cta.customTitle")}
             </h3>
-            <p className="mt-3 text-primary-50/90">
-              Tim engineering kami siap mendampingi dari konsep, desain CAD,
-              prototyping, hingga uji homologasi. Sampaikan kebutuhan Anda dan
-              kami akan menyiapkan proposal teknis & komersial.
-            </p>
+            <p className="mt-3 text-primary-50/90">{t("cta.customDesc")}</p>
           </div>
           <div className="flex md:justify-end">
             <Link
               to="/kontak"
               className="inline-flex items-center px-6 py-3 rounded-lg bg-secondary-500 hover:bg-secondary-600 text-black font-semibold"
             >
-              Konsultasi Sekarang
+              {t("cta.consult")}
             </Link>
           </div>
         </div>

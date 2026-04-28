@@ -1,5 +1,7 @@
+import { useT } from "../context/LanguageContext";
+
 // Renders a YouTube embed from a URL, video ID, or playlist URL.
-// Falls back to a "Tonton di YouTube" CTA for channel-only URLs (which can't be embedded directly).
+// Falls back to a CTA for channel-only URLs (which can't be embedded directly).
 
 const VIDEO_RX = /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
 const PLAYLIST_RX = /[?&]list=([a-zA-Z0-9_-]+)/;
@@ -30,12 +32,10 @@ export function parseYoutubeUrl(input) {
   return null;
 }
 
-export default function YouTubeSection({
-  url,
-  title = "Lihat Karya Kami di YouTube",
-  subtitle,
-}) {
+export default function YouTubeSection({ url, title, subtitle }) {
+  const { t } = useT();
   const parsed = parseYoutubeUrl(url);
+  const heading = title || t("youtube.defaultTitle");
 
   let embedSrc = null;
   if (parsed?.type === "video") {
@@ -51,9 +51,9 @@ export default function YouTubeSection({
       <div className="container mx-auto px-4 py-16">
         <div className="text-center max-w-2xl mx-auto mb-8">
           <p className="text-xs font-semibold uppercase tracking-widest text-secondary-500">
-            YouTube
+            {t("youtube.eyebrow")}
           </p>
-          <h2 className="mt-2 text-2xl md:text-3xl font-bold">{title}</h2>
+          <h2 className="mt-2 text-2xl md:text-3xl font-bold">{heading}</h2>
           {subtitle && (
             <p className="mt-3 text-slate-300 text-sm md:text-base">
               {subtitle}
@@ -66,7 +66,7 @@ export default function YouTubeSection({
             <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10">
               <iframe
                 src={embedSrc}
-                title={title}
+                title={heading}
                 className="absolute inset-0 w-full h-full"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
@@ -75,25 +75,19 @@ export default function YouTubeSection({
             </div>
           ) : parsed?.type === "channel" ? (
             <div className="rounded-2xl bg-slate-800 border border-white/10 p-10 text-center">
-              <p className="text-slate-300">
-                URL channel YouTube tidak bisa di-embed langsung.
-              </p>
+              <p className="text-slate-300">{t("youtube.fallback")}</p>
               <a
                 href={parsed.url}
                 target="_blank"
                 rel="noreferrer"
                 className="mt-5 inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold"
               >
-                ▶ Buka Channel di YouTube
+                {t("youtube.openChannel")}
               </a>
-              <p className="mt-4 text-xs text-slate-400">
-                Tip: copy URL video terakhir dari channel & paste di Admin →
-                Pengaturan untuk meng-embed video tertentu di sini.
-              </p>
             </div>
           ) : (
             <div className="rounded-2xl bg-slate-800 border border-white/10 p-10 text-center text-slate-400">
-              URL video YouTube belum dikonfigurasi.
+              {t("youtube.notConfigured")}
             </div>
           )}
         </div>

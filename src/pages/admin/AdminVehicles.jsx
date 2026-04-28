@@ -163,9 +163,12 @@ function VehicleForm({
   const addImage = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 1.5 * 1024 * 1024) {
+    // Firestore docs cap out at 1MB total. Base64 inflates by ~33%, so a 700KB
+    // raw image becomes ~930KB and pushes a multi-image vehicle past the limit.
+    // Cap each image at 500KB to leave headroom for other fields and other photos.
+    if (file.size > 500 * 1024) {
       window.alert(
-        "Ukuran gambar maks 1.5 MB (disimpan di localStorage). Silakan kompres dulu."
+        "Ukuran gambar maks 500KB. Foto disimpan sebagai base64 di Firestore (limit 1MB per dokumen). Kompres dulu pakai TinyPNG / Squoosh."
       );
       return;
     }

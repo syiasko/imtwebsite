@@ -14,16 +14,20 @@ import {
 } from "../data/initialData";
 import {
   deleteCategoryDoc,
+  deleteUserDoc,
   deleteVehicleDoc,
   saveCategory,
   saveCompany,
+  saveUser,
   saveVehicle,
   seedIfEmpty,
   subscribeCategories,
   subscribeCompany,
+  subscribeUsers,
   subscribeVehicles,
 } from "../firebase/api";
 import { ensureAnonAuth } from "../firebase/config";
+import { sha256Hex } from "../firebase/password";
 
 const DataContext = createContext(null);
 
@@ -37,20 +41,28 @@ const slugify = (str) =>
 export function DataProvider({ children }) {
   const [categories, setCategories] = useState([]);
   const [vehicles, setVehicles] = useState([]);
+  const [users, setUsers] = useState([]);
   const [company, setCompany] = useState(initialCompanySettings);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [authStatus, setAuthStatus] = useState("idle"); // idle | ok | error
+  const [authError, setAuthError] = useState(null);
+  const [firestoreError, setFirestoreError] = useState(null);
   const seedRef = useRef(false);
 
   useEffect(() => {
     let unsubCats = () => {};
     let unsubVeh = () => {};
     let unsubCompany = () => {};
+    let unsubUsers = () => {};
     let cancelled = false;
 
     (async () => {
       try {
         await ensureAnonAuth();
+        if (cancelled) return;
+        setAuthStatus("ok");
+        setAuthError(null);
+
         if (!seedRef.current) {
           seedRef.current = true;
           await seedIfEmpty({
@@ -58,25 +70,37 @@ export function DataProvider({ children }) {
             vehicles: initialVehicles,
             company: initialCompanySettings,
           }).catch((err) => {
-            // If seeding fails (e.g. rules), keep defaults so UI still renders.
-            console.warn("Firestore seed skipped:", err?.message || err);
+            console.warn("Seed skipped:", err?.message || err);
           });
         }
-
-        if (cancelled) return;
-
-        unsubCats = subscribeCategories((rows) => setCategories(rows));
-        unsubVeh = subscribeVehicles((rows) => setVehicles(rows));
-        unsubCompany = subscribeCompany((data) => {
-          setCompany((prev) => ({ ...initialCompanySettings, ...(data || prev) }));
-          setLoading(false);
-        });
       } catch (err) {
         if (!cancelled) {
-          setError(err);
+          setAuthStatus("error");
+          setAuthError(err);
           setLoading(false);
         }
+        return;
       }
+
+      if (cancelled) return;
+
+      const onSubError = (err) => {
+        console.error("Firestore subscription error:", err);
+        setFirestoreError(err);
+        setLoading(false);
+      };
+
+      unsubCats = subscribeCategories(
+        (rows) => setCategories(rows),
+        onSubError
+      );
+      unsubVeh = subscribeVehicles((rows) => setVehicles(rows), onSubError);
+      unsubUsers = subscribeUsers((rows) => setUsers(rows), onSubError);
+      unsubCompany = subscribeCompany((data) => {
+        setCompany((prev) => ({ ...initialCompanySettings, ...(data || prev) }));
+        setLoading(false);
+        setFirestoreError(null);
+      }, onSubError);
     })();
 
     return () => {
@@ -84,9 +108,11 @@ export function DataProvider({ children }) {
       unsubCats();
       unsubVeh();
       unsubCompany();
+      unsubUsers();
     };
   }, []);
 
+  // --- Categories
   const upsertCategory = useCallback(async (category) => {
     const slug = slugify(category.slug || category.name);
     const id = category.id || slug || `cat-${Date.now()}`;
@@ -99,9 +125,9 @@ export function DataProvider({ children }) {
     };
     await saveCategory(next);
   }, []);
-
   const deleteCategory = useCallback((id) => deleteCategoryDoc(id), []);
 
+  // --- Vehicles
   const upsertVehicle = useCallback(async (vehicle) => {
     const id = vehicle.id || `v-${Date.now()}`;
     const next = {
@@ -119,17 +145,43 @@ export function DataProvider({ children }) {
     };
     await saveVehicle(next);
   }, []);
-
   const deleteVehicle = useCallback((id) => deleteVehicleDoc(id), []);
 
+  // --- Company
   const updateCompany = useCallback(
     (patch) => saveCompany({ ...company, ...patch }),
     [company]
   );
 
+  // --- Users
+  const upsertUser = useCallback(
+    async ({ id, username, name, role, password, passwordHash }) => {
+      const cleanUsername = username?.trim().toLowerCase();
+      if (!cleanUsername) throw new Error("Username wajib diisi.");
+      const finalId = id || `u-${Date.now()}`;
+      const next = {
+        id: finalId,
+        username: cleanUsername,
+        name: name?.trim() || cleanUsername,
+        role: role || "admin",
+        passwordHash:
+          password && password.length > 0
+            ? await sha256Hex(password)
+            : passwordHash || "",
+        updatedAt: new Date().toISOString(),
+      };
+      if (!id) next.createdAt = next.updatedAt;
+      if (!next.passwordHash && !id)
+        throw new Error("Password wajib untuk user baru.");
+      await saveUser(next);
+      return next;
+    },
+    []
+  );
+  const deleteUser = useCallback((id) => deleteUserDoc(id), []);
+
+  // --- Reset
   const resetData = useCallback(async () => {
-    // Re-write seed values; existing docs with same id are overwritten, but
-    // user-added docs are preserved (caller can also delete via admin UI).
     for (const c of initialCategories) await saveCategory(c);
     for (const v of initialVehicles) await saveVehicle(v);
     await saveCompany(initialCompanySettings);
@@ -139,27 +191,37 @@ export function DataProvider({ children }) {
     () => ({
       categories,
       vehicles,
+      users,
       company,
       loading,
-      error,
+      authStatus,
+      authError,
+      firestoreError,
       upsertCategory,
       deleteCategory,
       upsertVehicle,
       deleteVehicle,
       updateCompany,
+      upsertUser,
+      deleteUser,
       resetData,
     }),
     [
       categories,
       vehicles,
+      users,
       company,
       loading,
-      error,
+      authStatus,
+      authError,
+      firestoreError,
       upsertCategory,
       deleteCategory,
       upsertVehicle,
       deleteVehicle,
       updateCompany,
+      upsertUser,
+      deleteUser,
       resetData,
     ]
   );

@@ -1,6 +1,6 @@
 import { useData } from "../context/DataContext";
 
-export default function Catalog() {
+export default function CatalogPrint() {
   const { categories, vehicles, company } = useData();
 
   const handlePrint = () => window.print();
