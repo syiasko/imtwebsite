@@ -1,5 +1,12 @@
 import { useMemo, useState } from "react";
 import { useData } from "../../context/DataContext";
+import { useToast } from "../../context/ToastContext";
+import {
+  compressImage,
+  formatBytes,
+} from "../../utils/imageCompression";
+
+const MAX_IMAGES = 10;
 
 const emptyDraft = {
   id: "",
@@ -14,6 +21,7 @@ const emptyDraft = {
 
 export default function AdminVehicles() {
   const { categories, vehicles, upsertVehicle, deleteVehicle } = useData();
+  const toast = useToast();
   const [draft, setDraft] = useState(emptyDraft);
   const [filterCat, setFilterCat] = useState("");
 
@@ -25,9 +33,7 @@ export default function AdminVehicles() {
 
   const filtered = useMemo(
     () =>
-      filterCat
-        ? vehicles.filter((v) => v.categoryId === filterCat)
-        : vehicles,
+      filterCat ? vehicles.filter((v) => v.categoryId === filterCat) : vehicles,
     [vehicles, filterCat]
   );
 
@@ -38,21 +44,35 @@ export default function AdminVehicles() {
       specs: { ...(v.specs || {}) },
       features: [...(v.features || [])],
     });
+
   const startNew = () =>
     setDraft({
       ...emptyDraft,
       categoryId: categories[0]?.id || "",
     });
 
-  const onSubmit = (e) => {
-    e.preventDefault();
-    if (!draft.name.trim() || !draft.categoryId) return;
-    upsertVehicle(draft);
-    startNew();
+  const onSave = async (formDraft) => {
+    if (!formDraft.name.trim() || !formDraft.categoryId) {
+      throw new Error("Nama unit dan kategori wajib diisi.");
+    }
+    const saved = await upsertVehicle(formDraft);
+    // Stay in edit mode: if it was a new vehicle, transition to its id so the
+    // form re-mounts as edit (saved data already reflected).
+    setDraft({
+      ...saved,
+      images: [...(saved.images || [])],
+      specs: { ...(saved.specs || {}) },
+      features: [...(saved.features || [])],
+    });
+    return saved;
   };
 
   const onDelete = (v) => {
-    if (window.confirm(`Hapus unit "${v.name}"?`)) deleteVehicle(v.id);
+    if (window.confirm(`Hapus unit "${v.name}"?`)) {
+      deleteVehicle(v.id);
+      if (draft.id === v.id) startNew();
+      toast.info(`Unit "${v.name}" dihapus.`);
+    }
   };
 
   return (
@@ -76,7 +96,7 @@ export default function AdminVehicles() {
             <button
               type="button"
               onClick={startNew}
-              className="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700"
+              className="px-3 py-1.5 rounded-lg bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700"
             >
               + Tambah Unit
             </button>
@@ -88,7 +108,7 @@ export default function AdminVehicles() {
             <li
               key={v.id}
               className={`px-5 py-3 flex gap-3 items-start hover:bg-slate-50 ${
-                draft.id === v.id ? "bg-brand-50/40" : ""
+                draft.id === v.id ? "bg-primary-50/40" : ""
               }`}
             >
               <img
@@ -97,9 +117,7 @@ export default function AdminVehicles() {
                 className="h-16 w-20 rounded-lg object-cover bg-slate-100 flex-shrink-0"
               />
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-slate-900 truncate">
-                  {v.name}
-                </p>
+                <p className="font-semibold text-slate-900 truncate">{v.name}</p>
                 <p className="text-xs text-slate-500">
                   {categoryById[v.categoryId]?.name || "—"} •{" "}
                   {v.images?.length || 0} foto •{" "}
@@ -114,13 +132,13 @@ export default function AdminVehicles() {
               <div className="flex flex-col gap-1 text-right">
                 <button
                   onClick={() => startEdit(v)}
-                  className="text-sm font-medium text-brand-700 hover:underline"
+                  className="text-sm font-medium text-primary-700 hover:underline"
                 >
                   Ubah
                 </button>
                 <button
                   onClick={() => onDelete(v)}
-                  className="text-sm text-slate-500 hover:text-brand-700"
+                  className="text-sm text-slate-500 hover:text-primary-700"
                 >
                   Hapus
                 </button>
@@ -141,7 +159,7 @@ export default function AdminVehicles() {
         setDraft={setDraft}
         categories={categories}
         editing={editing}
-        onSubmit={onSubmit}
+        onSave={onSave}
         onCancel={startNew}
       />
     </div>
@@ -153,67 +171,159 @@ function VehicleForm({
   setDraft,
   categories,
   editing,
-  onSubmit,
+  onSave,
   onCancel,
 }) {
+  const toast = useToast();
   const [specKey, setSpecKey] = useState("");
   const [specVal, setSpecVal] = useState("");
   const [feature, setFeature] = useState("");
+  const [pending, setPending] = useState([]);
+  const [saving, setSaving] = useState(false);
 
-  const addImage = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    // Firestore docs cap out at 1MB total. Base64 inflates by ~33%, so a 700KB
-    // raw image becomes ~930KB and pushes a multi-image vehicle past the limit.
-    // Cap each image at 500KB to leave headroom for other fields and other photos.
-    if (file.size > 500 * 1024) {
-      window.alert(
-        "Ukuran gambar maks 500KB. Foto disimpan sebagai base64 di Firestore (limit 1MB per dokumen). Kompres dulu pakai TinyPNG / Squoosh."
-      );
+  const totalImages = draft.images.length + pending.length;
+  const slotsLeft = MAX_IMAGES - totalImages;
+  const isUploading = pending.some((p) => !p.error);
+  const submitDisabled = saving || isUploading;
+
+  const handleFiles = async (fileList) => {
+    const files = Array.from(fileList);
+    if (files.length === 0) return;
+    if (slotsLeft <= 0) {
+      toast.error(`Sudah mencapai batas maksimal ${MAX_IMAGES} foto per unit.`);
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      setDraft({ ...draft, images: [...draft.images, reader.result] });
-    };
-    reader.readAsDataURL(file);
+    const toProcess = files.slice(0, slotsLeft);
+    if (files.length > slotsLeft) {
+      toast.info(
+        `Hanya ${slotsLeft} dari ${files.length} foto yang akan diproses (limit ${MAX_IMAGES}).`
+      );
+    }
+
+    const entries = toProcess.map((file, i) => ({
+      tempId: `${Date.now()}-${i}-${Math.random().toString(36).slice(2, 7)}`,
+      name: file.name,
+      size: file.size,
+      progress: 0,
+      error: null,
+      file,
+    }));
+
+    setPending((prev) => [...prev, ...entries]);
+
+    await Promise.all(
+      entries.map(async (entry) => {
+        try {
+          const result = await compressImage(entry.file, {
+            onProgress: (p) =>
+              setPending((prev) =>
+                prev.map((x) =>
+                  x.tempId === entry.tempId ? { ...x, progress: p } : x
+                )
+              ),
+          });
+          setDraft((prev) => ({
+            ...prev,
+            images: [...prev.images, result.dataUrl],
+          }));
+          setPending((prev) => prev.filter((x) => x.tempId !== entry.tempId));
+          if (result.compressed) {
+            toast.info(
+              `${entry.name}: dikompres dari ${formatBytes(
+                result.originalSize
+              )} → ${formatBytes(result.finalSize)}.`,
+              { duration: 4500 }
+            );
+          }
+        } catch (err) {
+          setPending((prev) =>
+            prev.map((x) =>
+              x.tempId === entry.tempId
+                ? { ...x, error: err.message || "Gagal memproses gambar" }
+                : x
+            )
+          );
+          toast.error(`${entry.name}: ${err.message || "Gagal memproses"}.`);
+        }
+      })
+    );
+  };
+
+  const onFileInputChange = (e) => {
+    handleFiles(e.target.files);
     e.target.value = "";
   };
 
   const addImageUrl = () => {
+    if (slotsLeft <= 0) return;
     const url = window.prompt("Masukkan URL gambar:");
-    if (url) setDraft({ ...draft, images: [...draft.images, url] });
+    if (url) setDraft((prev) => ({ ...prev, images: [...prev.images, url] }));
   };
 
   const removeImage = (i) =>
-    setDraft({ ...draft, images: draft.images.filter((_, idx) => idx !== i) });
+    setDraft((prev) => ({
+      ...prev,
+      images: prev.images.filter((_, idx) => idx !== i),
+    }));
+
+  const dismissPending = (id) =>
+    setPending((prev) => prev.filter((p) => p.tempId !== id));
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    if (isUploading) {
+      toast.error("Tunggu upload gambar selesai dulu.");
+      return;
+    }
+    if (!draft.name.trim() || !draft.categoryId) {
+      toast.error("Nama unit dan kategori wajib diisi.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const wasEditing = editing;
+      await onSave(draft);
+      toast.success(
+        wasEditing ? "Perubahan tersimpan." : `Unit "${draft.name}" ditambahkan.`
+      );
+    } catch (err) {
+      toast.error(err.message || "Gagal menyimpan.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const addSpec = () => {
     if (!specKey.trim() || !specVal.trim()) return;
-    setDraft({
-      ...draft,
-      specs: { ...draft.specs, [specKey.trim()]: specVal.trim() },
-    });
+    setDraft((prev) => ({
+      ...prev,
+      specs: { ...prev.specs, [specKey.trim()]: specVal.trim() },
+    }));
     setSpecKey("");
     setSpecVal("");
   };
 
   const removeSpec = (key) => {
-    const { [key]: _, ...rest } = draft.specs;
-    setDraft({ ...draft, specs: rest });
+    setDraft((prev) => {
+      const { [key]: _, ...rest } = prev.specs;
+      return { ...prev, specs: rest };
+    });
   };
 
   const addFeature = () => {
     if (!feature.trim()) return;
-    setDraft({ ...draft, features: [...draft.features, feature.trim()] });
+    setDraft((prev) => ({
+      ...prev,
+      features: [...prev.features, feature.trim()],
+    }));
     setFeature("");
   };
 
   const removeFeature = (i) =>
-    setDraft({
-      ...draft,
-      features: draft.features.filter((_, idx) => idx !== i),
-    });
+    setDraft((prev) => ({
+      ...prev,
+      features: prev.features.filter((_, idx) => idx !== i),
+    }));
 
   return (
     <form
@@ -242,9 +352,9 @@ function VehicleForm({
         <input
           type="text"
           value={draft.name}
-          onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+          onChange={(e) => setDraft((p) => ({ ...p, name: e.target.value }))}
           required
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600 focus:border-brand-600"
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600"
         />
       </div>
 
@@ -254,7 +364,9 @@ function VehicleForm({
         </label>
         <select
           value={draft.categoryId}
-          onChange={(e) => setDraft({ ...draft, categoryId: e.target.value })}
+          onChange={(e) =>
+            setDraft((p) => ({ ...p, categoryId: e.target.value }))
+          }
           required
           className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white"
         >
@@ -274,8 +386,8 @@ function VehicleForm({
         <input
           type="text"
           value={draft.tagline}
-          onChange={(e) => setDraft({ ...draft, tagline: e.target.value })}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600 focus:border-brand-600"
+          onChange={(e) => setDraft((p) => ({ ...p, tagline: e.target.value }))}
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600"
         />
       </div>
 
@@ -287,53 +399,97 @@ function VehicleForm({
           rows="4"
           value={draft.description}
           onChange={(e) =>
-            setDraft({ ...draft, description: e.target.value })
+            setDraft((p) => ({ ...p, description: e.target.value }))
           }
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600 focus:border-brand-600"
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">
-          Foto Slideshow
-        </label>
-        <div className="flex flex-wrap gap-2">
-          {draft.images.map((src, i) => (
-            <div key={i} className="relative">
-              <img
-                src={src}
-                alt=""
-                className="h-20 w-24 object-cover rounded-md border border-slate-200"
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-sm font-medium text-slate-700">
+            Foto Slideshow
+          </label>
+          <span
+            className={`text-xs font-semibold ${
+              totalImages >= MAX_IMAGES
+                ? "text-secondary-700"
+                : "text-slate-500"
+            }`}
+          >
+            {totalImages} / {MAX_IMAGES}
+          </span>
+        </div>
+
+        {(draft.images.length > 0 || pending.length > 0) && (
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            {draft.images.map((src, i) => (
+              <div
+                key={`img-${i}`}
+                className="relative aspect-[4/3] rounded-md overflow-hidden border border-slate-200 bg-slate-100"
+              >
+                <img
+                  src={src}
+                  alt={`Foto ${i + 1}`}
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeImage(i)}
+                  className="absolute top-1 right-1 h-6 w-6 rounded-full bg-slate-900/80 text-white text-xs grid place-items-center hover:bg-slate-900"
+                  aria-label="Hapus foto"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            {pending.map((p) => (
+              <PendingTile
+                key={p.tempId}
+                pending={p}
+                onDismiss={() => dismissPending(p.tempId)}
               />
+            ))}
+          </div>
+        )}
+
+        <div className="mt-3 flex flex-wrap gap-2 items-center">
+          {slotsLeft > 0 && (
+            <>
+              <label
+                className={`cursor-pointer text-sm font-medium px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 ${
+                  isUploading ? "opacity-60" : ""
+                }`}
+              >
+                📷 Upload Foto ({slotsLeft} slot tersisa)
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={onFileInputChange}
+                  className="hidden"
+                />
+              </label>
               <button
                 type="button"
-                onClick={() => removeImage(i)}
-                className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-slate-900 text-white text-xs grid place-items-center"
-                aria-label="Hapus foto"
+                onClick={addImageUrl}
+                className="text-sm font-medium px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50"
               >
-                ×
+                + dari URL
               </button>
-            </div>
-          ))}
+            </>
+          )}
+          {slotsLeft <= 0 && (
+            <p className="text-xs text-secondary-700 bg-secondary-50 border border-secondary-200 rounded px-3 py-2">
+              Sudah mencapai batas maksimal {MAX_IMAGES} foto. Hapus salah satu
+              untuk mengganti.
+            </p>
+          )}
         </div>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <label className="cursor-pointer text-sm font-medium px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50">
-            Upload Foto
-            <input
-              type="file"
-              accept="image/*"
-              onChange={addImage}
-              className="hidden"
-            />
-          </label>
-          <button
-            type="button"
-            onClick={addImageUrl}
-            className="text-sm font-medium px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50"
-          >
-            + dari URL
-          </button>
-        </div>
+        <p className="mt-1.5 text-xs text-slate-500">
+          Bulk upload didukung — pilih beberapa foto sekaligus. Foto besar otomatis
+          dikompres agar muat di Firestore.
+        </p>
       </div>
 
       <div>
@@ -353,7 +509,7 @@ function VehicleForm({
               <button
                 type="button"
                 onClick={() => removeSpec(k)}
-                className="text-slate-400 hover:text-brand-700"
+                className="text-slate-400 hover:text-primary-700"
                 aria-label="Hapus spesifikasi"
               >
                 ×
@@ -400,7 +556,7 @@ function VehicleForm({
               <button
                 type="button"
                 onClick={() => removeFeature(i)}
-                className="text-slate-400 hover:text-brand-700"
+                className="text-slate-400 hover:text-primary-700"
                 aria-label="Hapus fitur"
               >
                 ×
@@ -434,10 +590,81 @@ function VehicleForm({
 
       <button
         type="submit"
-        className="w-full px-4 py-2.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold"
+        disabled={submitDisabled}
+        className="w-full px-4 py-2.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
       >
-        {editing ? "Simpan Perubahan" : "Tambah Unit"}
+        {isUploading
+          ? "Menunggu upload selesai..."
+          : saving
+          ? "Menyimpan..."
+          : editing
+          ? "Simpan Perubahan"
+          : "Tambah Unit"}
       </button>
     </form>
+  );
+}
+
+function PendingTile({ pending, onDismiss }) {
+  const { progress, error, name } = pending;
+  return (
+    <div className="relative aspect-[4/3] rounded-md overflow-hidden border-2 border-dashed border-slate-300 bg-slate-50 grid place-items-center">
+      <div className="text-center px-2">
+        {error ? (
+          <>
+            <p className="text-2xl">⚠️</p>
+            <p className="text-[10px] text-primary-700 font-medium mt-1 line-clamp-2">
+              {error}
+            </p>
+          </>
+        ) : (
+          <>
+            <Spinner />
+            <p className="text-[10px] text-slate-500 font-medium mt-1 line-clamp-1">
+              {name}
+            </p>
+            <div className="mt-1.5 h-1 w-16 mx-auto bg-slate-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary-600 transition-all"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <p className="text-[10px] text-slate-400 mt-0.5">{progress}%</p>
+          </>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="absolute top-1 right-1 h-6 w-6 rounded-full bg-slate-900/80 text-white text-xs grid place-items-center hover:bg-slate-900"
+        aria-label="Batalkan"
+      >
+        ×
+      </button>
+    </div>
+  );
+}
+
+function Spinner() {
+  return (
+    <svg
+      className="mx-auto h-6 w-6 animate-spin text-primary-600"
+      viewBox="0 0 24 24"
+      fill="none"
+    >
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="3"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 0 1 8-8v3a5 5 0 0 0-5 5H4z"
+      />
+    </svg>
   );
 }

@@ -10,11 +10,13 @@ export default function Footer() {
     <footer className="bg-slate-900 text-slate-300 mt-20">
       <div className="container mx-auto px-4 py-12 grid gap-10 md:grid-cols-2 lg:grid-cols-3">
         <div className="lg:col-span-1 space-y-4">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-primary-600 text-white font-bold">
-              IMT
-            </span>
-            <p className="font-bold text-white">
+          <div className="flex items-center gap-3">
+            <img
+              src="/logo.png"
+              alt="IMT Karoseri"
+              className="h-12 w-12 rounded-md object-contain bg-white p-1"
+            />
+            <p className="font-bold text-white text-lg">
               {company.shortName || "IMT Karoseri"}
             </p>
           </div>
