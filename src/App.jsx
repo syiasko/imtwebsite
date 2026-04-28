@@ -12,6 +12,7 @@ import AdminCategories from "./pages/admin/AdminCategories";
 import AdminVehicles from "./pages/admin/AdminVehicles";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminUsers from "./pages/admin/AdminUsers";
+import ToastViewport from "./components/Toast";
 import { trackPageView } from "./firebase/config";
 import { useT } from "./context/LanguageContext";
 
@@ -60,6 +61,7 @@ export default function App() {
         </Routes>
       </main>
       <Footer />
+      <ToastViewport />
     </div>
   );
 }

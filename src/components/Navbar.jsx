@@ -40,9 +40,11 @@ export default function Navbar() {
           className="flex items-center gap-2 flex-shrink-0"
           onClick={() => setOpen(false)}
         >
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-primary-600 text-white font-bold">
-            IMT
-          </span>
+          <img
+            src="/logo.png"
+            alt="IMT Karoseri"
+            className="h-10 w-10 rounded-md object-contain bg-white"
+          />
           <div className="leading-tight hidden sm:block">
             <p className="font-bold text-slate-900">
               {company.shortName || "IMT Karoseri"}

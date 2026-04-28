@@ -144,6 +144,7 @@ export function DataProvider({ children }) {
       features: Array.isArray(vehicle.features) ? vehicle.features : [],
     };
     await saveVehicle(next);
+    return next;
   }, []);
   const deleteVehicle = useCallback((id) => deleteVehicleDoc(id), []);
 
