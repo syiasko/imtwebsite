@@ -42,7 +42,7 @@ export default function Navbar() {
         >
           <img
             src="/logo.png"
-            alt="IMT Karoseri"
+            alt="IMT Karoseri 100"
             className="h-10 w-10 rounded-md object-contain bg-white"
           />
           <div className="leading-tight hidden sm:block">
@@ -50,7 +50,7 @@ export default function Navbar() {
               {company.shortName || "IMT Karoseri"}
             </p>
             <p className="text-[11px] text-slate-500 -mt-0.5">
-              Karoseri Custom Indonesia
+              PT. Indraprasta Mulia Teknik
             </p>
           </div>
         </Link>

@@ -42,7 +42,12 @@ export default function Footer() {
             </li>
             <li className="flex gap-2">
               <span aria-hidden>📞</span>
-              <span>{company.whatsapp || company.phone}</span>
+              <a
+                href={`tel:${company.whatsapp || company.phone}`}
+                className="hover:text-white break-all"
+              >
+                {company.whatsapp || company.phone}
+              </a>
             </li>
             <li className="flex gap-2">
               <span aria-hidden>✉️</span>
