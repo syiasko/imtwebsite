@@ -1,13 +1,16 @@
-import { Link } from "react-router-dom";
 import { useData } from "../context/DataContext";
+import { useT } from "../context/LanguageContext";
+import MapEmbed from "./MapEmbed";
 
 export default function Footer() {
-  const { categories, company } = useData();
+  const { company } = useData();
+  const { t } = useT();
+
   return (
     <footer className="bg-slate-900 text-slate-300 mt-20">
-      <div className="container mx-auto px-4 py-12 grid gap-10 md:grid-cols-4">
-        <div>
-          <div className="flex items-center gap-2 mb-3">
+      <div className="container mx-auto px-4 py-12 grid gap-10 md:grid-cols-2 lg:grid-cols-3">
+        <div className="lg:col-span-1 space-y-4">
+          <div className="flex items-center gap-2">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-primary-600 text-white font-bold">
               IMT
             </span>
@@ -15,66 +18,64 @@ export default function Footer() {
               {company.shortName || "IMT Karoseri"}
             </p>
           </div>
-          <p className="text-sm font-semibold text-white">{company.name}</p>
-          <p className="mt-2 text-sm leading-relaxed">{company.tagline}</p>
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-wider text-secondary-400">
+              {t("footer.aboutHeading")}
+            </p>
+            <p className="mt-2 text-sm font-semibold text-white">
+              {company.name}
+            </p>
+            <p className="mt-1 text-sm leading-relaxed">{company.tagline}</p>
+          </div>
         </div>
 
-        <div>
-          <p className="font-semibold text-white mb-3">Produk</p>
+        <div className="space-y-4">
+          <p className="text-sm font-semibold uppercase tracking-wider text-secondary-400">
+            {t("footer.contactHeading")}
+          </p>
           <ul className="space-y-2 text-sm">
-            {categories.slice(0, 6).map((c) => (
-              <li key={c.id}>
-                <Link
-                  to={`/produk/kategori/${c.slug}`}
-                  className="hover:text-white"
-                >
-                  {c.name}
-                </Link>
-              </li>
-            ))}
+            <li className="flex gap-2">
+              <span aria-hidden>📍</span>
+              <span className="whitespace-pre-line">{company.address}</span>
+            </li>
+            <li className="flex gap-2">
+              <span aria-hidden>📞</span>
+              <span>{company.whatsapp || company.phone}</span>
+            </li>
+            <li className="flex gap-2">
+              <span aria-hidden>✉️</span>
+              <a
+                href={`mailto:${company.email}`}
+                className="hover:text-white break-all"
+              >
+                {company.email}
+              </a>
+            </li>
+            <li className="flex gap-2">
+              <span aria-hidden>🕒</span>
+              <span>{company.hours}</span>
+            </li>
           </ul>
         </div>
 
-        <div>
-          <p className="font-semibold text-white mb-3">Perusahaan</p>
-          <ul className="space-y-2 text-sm">
-            <li>
-              <Link to="/" className="hover:text-white">
-                Tentang Kami
-              </Link>
-            </li>
-            <li>
-              <Link to="/katalog" className="hover:text-white">
-                Download Katalog
-              </Link>
-            </li>
-            <li>
-              <Link to="/kontak" className="hover:text-white">
-                Kontak
-              </Link>
-            </li>
-          </ul>
-        </div>
-
-        <div>
-          <p className="font-semibold text-white mb-3">Hubungi Kami</p>
-          <ul className="space-y-2 text-sm">
-            {company.address?.split(",").map((line, i) => (
-              <li key={i}>{line.trim()}</li>
-            ))}
-            <li>Telp / WA: {company.whatsapp || company.phone}</li>
-            <li>Email: {company.email}</li>
-            <li>{company.hours}</li>
-          </ul>
+        <div className="md:col-span-2 lg:col-span-1">
+          <p className="text-sm font-semibold uppercase tracking-wider text-secondary-400 mb-3">
+            {t("footer.locationHeading")}
+          </p>
+          <MapEmbed
+            embedUrl={company.mapsEmbedUrl}
+            shareUrl={company.mapsShareUrl}
+            address={company.address}
+            height={240}
+            theme="dark"
+          />
         </div>
       </div>
+
       <div className="border-t border-slate-800">
         <div className="container mx-auto px-4 py-4 text-xs text-slate-500 flex flex-col md:flex-row justify-between gap-2">
-          <p>
-            &copy; {new Date().getFullYear()} {company.name}. All rights
-            reserved.
-          </p>
-          <p>Powered by Firebase &amp; Vercel.</p>
+          <p>{t("footer.copyright", { year: new Date().getFullYear(), company: company.name })}</p>
+          <p>{t("footer.poweredBy")}</p>
         </div>
       </div>
     </footer>

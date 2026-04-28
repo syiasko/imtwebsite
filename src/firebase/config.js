@@ -17,16 +17,24 @@ export const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 
-// Anonymous auth so Firestore rules can require auth without forcing visitor login.
-export const ensureAnonAuth = async () => {
-  if (auth.currentUser) return auth.currentUser;
-  try {
-    const cred = await signInAnonymously(auth);
-    return cred.user;
-  } catch (err) {
-    console.warn("Anonymous auth failed (Firestore writes may be blocked):", err);
-    return null;
+let authPromise = null;
+export const ensureAnonAuth = () => {
+  if (auth.currentUser) return Promise.resolve(auth.currentUser);
+  if (!authPromise) {
+    authPromise = signInAnonymously(auth)
+      .then((cred) => cred.user)
+      .catch((err) => {
+        authPromise = null;
+        const reason =
+          err?.code === "auth/admin-restricted-operation"
+            ? "Anonymous sign-in belum diaktifkan di Firebase Console (Authentication → Sign-in method → Anonymous)."
+            : err?.message || "Gagal sign-in anonymous.";
+        const wrapped = new Error(reason);
+        wrapped.code = err?.code;
+        throw wrapped;
+      });
   }
+  return authPromise;
 };
 
 let analyticsPromise = null;
@@ -45,7 +53,7 @@ export const trackEvent = async (eventName, params = {}) => {
     const analytics = await getAnalyticsLazy();
     if (analytics) logEvent(analytics, eventName, params);
   } catch {
-    // Analytics is best-effort; never break UI on tracking errors.
+    // best-effort
   }
 };
 

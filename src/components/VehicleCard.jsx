@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
+import { useT } from "../context/LanguageContext";
 
 export default function VehicleCard({ vehicle, categoryName }) {
+  const { t } = useT();
   const cover = vehicle.images?.[0];
   return (
     <Link
@@ -16,17 +18,17 @@ export default function VehicleCard({ vehicle, categoryName }) {
           />
         ) : (
           <div className="w-full h-full grid place-items-center text-slate-400 text-sm">
-            Tidak ada gambar
+            —
           </div>
         )}
       </div>
       <div className="p-5">
         {categoryName && (
-          <span className="inline-block text-[11px] font-semibold uppercase tracking-wide text-brand-700 bg-brand-50 px-2 py-0.5 rounded">
+          <span className="inline-block text-[11px] font-semibold uppercase tracking-wide text-primary-700 bg-primary-50 px-2 py-0.5 rounded">
             {categoryName}
           </span>
         )}
-        <h3 className="mt-2 text-lg font-semibold text-slate-900 group-hover:text-brand-700">
+        <h3 className="mt-2 text-lg font-semibold text-slate-900 group-hover:text-primary-700">
           {vehicle.name}
         </h3>
         {vehicle.tagline && (
@@ -36,10 +38,12 @@ export default function VehicleCard({ vehicle, categoryName }) {
         )}
         <div className="mt-4 flex items-center justify-between text-sm">
           <span className="text-slate-500">
-            {vehicle.features?.length || 0} fitur unggulan
+            {t("products.featuresCount", {
+              count: vehicle.features?.length || 0,
+            })}
           </span>
-          <span className="font-semibold text-brand-700 group-hover:underline">
-            Lihat detail →
+          <span className="font-semibold text-primary-700 group-hover:underline">
+            {t("products.viewDetail")}
           </span>
         </div>
       </div>
