@@ -4,6 +4,7 @@ import { useT } from "../context/LanguageContext";
 import VehicleCard from "../components/VehicleCard";
 import YouTubeSection from "../components/YouTubeSection";
 import CatalogDownloadButton from "../components/CatalogDownloadButton";
+import CategorySlider from "../components/CategorySlider";
 
 export default function Home() {
   const { categories, vehicles, company } = useData();
@@ -84,27 +85,8 @@ export default function Home() {
           title={t("section.categoriesTitle")}
           subtitle={t("section.categoriesSubtitle")}
         />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-8">
-          {categories.map((c) => (
-            <Link
-              key={c.id}
-              to={`/produk/kategori/${c.slug}`}
-              className="group p-6 rounded-2xl bg-white border border-slate-200 hover:border-primary-300 hover:shadow-lg transition"
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-slate-900 group-hover:text-primary-700">
-                  {c.name}
-                </h3>
-                <span className="text-secondary-500 text-xl">→</span>
-              </div>
-              <p className="mt-2 text-sm text-slate-600">{c.description}</p>
-              <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                {t("section.unitsAvailable", {
-                  count: vehicles.filter((v) => v.categoryId === c.id).length,
-                })}
-              </p>
-            </Link>
-          ))}
+        <div className="mt-8">
+          <CategorySlider categories={categories} vehicles={vehicles} />
         </div>
       </section>
 
