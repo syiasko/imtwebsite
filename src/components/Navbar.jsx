@@ -55,6 +55,17 @@ export default function Navbar() {
           </div>
         </Link>
 
+        {/* Mobile-only centered title — fills the gap between logo & hamburger
+            when the logo subtitle (sm:block) is hidden. */}
+        <div className="sm:hidden flex-1 text-center min-w-0 px-2">
+          <p className="font-bold text-slate-900 text-sm leading-tight truncate">
+            Carroserries100
+          </p>
+          <p className="text-[10px] text-slate-500 leading-tight truncate">
+            PT. Indraprasta Mulia Teknik
+          </p>
+        </div>
+
         <form
           onSubmit={onSearchSubmit}
           role="search"
