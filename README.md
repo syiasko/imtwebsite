@@ -35,13 +35,11 @@ Project sudah hard-code ke `imtwebsite-ddf59`. Yang perlu dilakukan di Firebase 
 1. **Authentication** → Sign-in method → **Anonymous** → Enable
 2. **Firestore Database** → Create Database → Production mode
 3. **Firestore Rules** → paste dari `firestore.rules`
-4. **Storage** → Get started → pilih region → Production mode
-5. **Storage Rules** → paste dari `storage.rules` (public read, auth write, max 1.5MB per file)
-6. **Analytics** sudah otomatis aktif via `measurementId`
+4. **Analytics** sudah otomatis aktif via `measurementId`
 
 Saat pertama kali user membuka website, app akan auto-seed Firestore dengan data default.
 
-> Foto kendaraan disimpan di Firebase Storage di path `vehicles/{vehicleId}/{file}`. Saat tambah/hapus foto via admin panel, file akan otomatis ter-upload/dihapus.
+> Foto kendaraan disimpan sebagai data URL (base64) di **Firestore** — gratis dalam free tier sampai 1 GB. Untuk muat 10 foto dalam 1 dokumen Firestore (limit 1 MB/dok), tiap foto otomatis dikompres ke ≤90 KB base64. Tidak perlu Firebase Storage (yang berbayar).
 
 ## Cara menjalankan
 
@@ -85,5 +83,5 @@ Lihat data di **Firebase Console → Analytics** atau Google Analytics dashboard
 
 ## Catatan
 
-- Foto kendaraan disimpan di **Firebase Storage** (`vehicles/{id}/...`); Firestore hanya menyimpan URL-nya. Auto-compress kalau file > 1MB. Maks **10 foto per unit, 1 MB per foto** (≈10 MB per unit).
+- Foto kendaraan disimpan sebagai data URL (base64) di Firestore. Maks **10 foto per unit**, target ≤90 KB base64 per foto (auto-compress agresif via canvas) supaya muat di 1 dokumen Firestore (limit 1 MB/dok). Resolusi tampilan masih cukup untuk listing & detail dengan slideshow (~1280px lebar).
 - PDF katalog max 800KB jika diupload langsung; lebih dari itu paste URL eksternal (Google Drive, Dropbox, dll).
