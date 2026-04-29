@@ -1,12 +1,39 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useData } from "../../context/DataContext";
 import {
   DEFAULT_ADMIN_PASSWORD,
   sha256Hex,
   verifyAdminPassword,
 } from "../../firebase/password";
+import { ADMIN_BASE_PATH, isCurrentAdmin } from "../Admin";
 
 export default function AdminSettings() {
+  if (!isCurrentAdmin()) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center">
+        <p className="text-4xl">🔒</p>
+        <h2 className="mt-3 text-xl font-bold text-slate-900">
+          Akses dibatasi
+        </h2>
+        <p className="mt-2 text-sm text-slate-600 max-w-md mx-auto">
+          Hanya pengguna dengan role <strong>Admin</strong> yang dapat
+          mengubah Company Setting (identitas, kontak, YouTube, Maps,
+          katalog PDF, password). Hubungi administrator untuk perubahan.
+        </p>
+        <Link
+          to={ADMIN_BASE_PATH}
+          className="mt-6 inline-block px-5 py-2.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-semibold"
+        >
+          Kembali ke Ringkasan
+        </Link>
+      </div>
+    );
+  }
+  return <AdminSettingsInner />;
+}
+
+function AdminSettingsInner() {
   const { company, updateCompany } = useData();
   const [draft, setDraft] = useState(company);
   const [savingMsg, setSavingMsg] = useState("");
