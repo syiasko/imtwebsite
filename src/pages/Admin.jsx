@@ -256,9 +256,11 @@ export default function Admin() {
             Pengguna ({users.length})
           </NavLink>
         )}
-        <NavLink to={`${ADMIN_BASE_PATH}/pengaturan`} className={tabClass}>
-          Company Setting
-        </NavLink>
+        {isAdmin && (
+          <NavLink to={`${ADMIN_BASE_PATH}/pengaturan`} className={tabClass}>
+            Company Setting
+          </NavLink>
+        )}
       </div>
 
       <div className="mt-8">{isOverview ? <Overview /> : <Outlet />}</div>
