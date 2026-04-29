@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useData } from "../../context/DataContext";
 import { ConfirmDialog } from "../../components/Modal";
+import { ADMIN_BASE_PATH, isCurrentAdmin } from "../Admin";
 
 const emptyDraft = {
   id: "",
@@ -11,6 +13,30 @@ const emptyDraft = {
 };
 
 export default function AdminUsers() {
+  if (!isCurrentAdmin()) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center">
+        <p className="text-4xl">🔒</p>
+        <h2 className="mt-3 text-xl font-bold text-slate-900">
+          Akses dibatasi
+        </h2>
+        <p className="mt-2 text-sm text-slate-600 max-w-md mx-auto">
+          Hanya pengguna dengan role <strong>Admin</strong> yang dapat
+          mengelola pengguna. Hubungi administrator untuk perubahan akun.
+        </p>
+        <Link
+          to={ADMIN_BASE_PATH}
+          className="mt-6 inline-block px-5 py-2.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-semibold"
+        >
+          Kembali ke Ringkasan
+        </Link>
+      </div>
+    );
+  }
+  return <AdminUsersInner />;
+}
+
+function AdminUsersInner() {
   const { users, upsertUser, deleteUser } = useData();
   const [draft, setDraft] = useState(emptyDraft);
   const [error, setError] = useState("");

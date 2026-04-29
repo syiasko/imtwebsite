@@ -10,7 +10,15 @@ import {
 const SESSION_KEY = "imt-admin-session-v3";
 const SESSION_USER_KEY = "imt-admin-user-id";
 const SESSION_USERNAME_KEY = "imt-admin-username";
+const SESSION_ROLE_KEY = "imt-admin-user-role";
 export const ADMIN_BASE_PATH = "/dapurnyaimt";
+
+export const getCurrentAdminRole = () => {
+  if (typeof window === "undefined") return null;
+  return sessionStorage.getItem(SESSION_ROLE_KEY);
+};
+
+export const isCurrentAdmin = () => getCurrentAdminRole() === "admin";
 
 export default function Admin() {
   const [authed, setAuthed] = useState(
@@ -57,9 +65,10 @@ export default function Admin() {
         sessionStorage.setItem(SESSION_KEY, "1");
         sessionStorage.setItem(SESSION_USER_KEY, user.id);
         sessionStorage.setItem(SESSION_USERNAME_KEY, user.username);
+        sessionStorage.setItem(SESSION_ROLE_KEY, user.role || "admin");
         setAuthed(true);
       } else {
-        // Legacy single-password mode (no users yet).
+        // Legacy single-password mode (no users yet) — treated as admin.
         const ok = await verifyAdminPassword(pwd, company.passwordHash);
         if (!ok) {
           setError("Password salah.");
@@ -68,6 +77,7 @@ export default function Admin() {
         sessionStorage.setItem(SESSION_KEY, "1");
         sessionStorage.setItem(SESSION_USER_KEY, "legacy-admin");
         sessionStorage.setItem(SESSION_USERNAME_KEY, "admin");
+        sessionStorage.setItem(SESSION_ROLE_KEY, "admin");
         setAuthed(true);
       }
     } finally {
@@ -79,6 +89,7 @@ export default function Admin() {
     sessionStorage.removeItem(SESSION_KEY);
     sessionStorage.removeItem(SESSION_USER_KEY);
     sessionStorage.removeItem(SESSION_USERNAME_KEY);
+    sessionStorage.removeItem(SESSION_ROLE_KEY);
     setAuthed(false);
   };
 
@@ -183,6 +194,8 @@ export default function Admin() {
   const isOverview =
     pathname === ADMIN_BASE_PATH || pathname === `${ADMIN_BASE_PATH}/`;
   const currentUsername = sessionStorage.getItem(SESSION_USERNAME_KEY);
+  const currentRole = sessionStorage.getItem(SESSION_ROLE_KEY) || "admin";
+  const isAdmin = currentRole === "admin";
 
   return (
     <div className="container mx-auto px-4 py-10">
@@ -198,6 +211,15 @@ export default function Admin() {
             Login sebagai{" "}
             <span className="font-mono font-semibold text-slate-900">
               {currentUsername || "admin"}
+            </span>{" "}
+            <span
+              className={`inline-block ml-1 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded ${
+                isAdmin
+                  ? "bg-primary-50 text-primary-700"
+                  : "bg-slate-100 text-slate-600"
+              }`}
+            >
+              {currentRole}
             </span>
             . Data tersimpan di Firestore.
           </p>
@@ -229,9 +251,11 @@ export default function Admin() {
         <NavLink to={`${ADMIN_BASE_PATH}/kendaraan`} className={tabClass}>
           Kendaraan ({vehicles.length})
         </NavLink>
-        <NavLink to={`${ADMIN_BASE_PATH}/pengguna`} className={tabClass}>
-          Pengguna ({users.length})
-        </NavLink>
+        {isAdmin && (
+          <NavLink to={`${ADMIN_BASE_PATH}/pengguna`} className={tabClass}>
+            Pengguna ({users.length})
+          </NavLink>
+        )}
         <NavLink to={`${ADMIN_BASE_PATH}/pengaturan`} className={tabClass}>
           Company Setting
         </NavLink>
@@ -244,11 +268,14 @@ export default function Admin() {
 
 function Overview() {
   const { categories, vehicles, users } = useData();
+  const isAdmin = isCurrentAdmin();
   return (
-    <div className="grid gap-6 md:grid-cols-4">
+    <div className={`grid gap-6 ${isAdmin ? "md:grid-cols-4" : "md:grid-cols-3"}`}>
       <StatCard label="Total Kategori" value={categories.length} />
       <StatCard label="Total Kendaraan" value={vehicles.length} />
-      <StatCard label="Total Pengguna" value={users.length} />
+      {isAdmin && (
+        <StatCard label="Total Pengguna" value={users.length} />
+      )}
       <StatCard
         label="Rata-rata Unit / Kategori"
         value={
@@ -257,7 +284,7 @@ function Overview() {
             : (vehicles.length / categories.length).toFixed(1)
         }
       />
-      <div className="md:col-span-4 bg-white rounded-2xl border border-slate-200 p-6">
+      <div className={`bg-white rounded-2xl border border-slate-200 p-6 ${isAdmin ? "md:col-span-4" : "md:col-span-3"}`}>
         <h2 className="font-semibold text-slate-900">Sebaran per Kategori</h2>
         <ul className="mt-4 space-y-3">
           {categories.map((c) => {
