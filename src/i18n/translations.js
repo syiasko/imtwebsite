@@ -133,7 +133,7 @@ export const translations = {
     "hero.eyebrow": "Custom Built Karoseri",
     "hero.title": "Special-purpose Vehicles, Engineered for Your Mission.",
     "hero.subtitle":
-      "From Ministry-of-Health-grade ambulances and fire trucks, to tactical APCs, food trucks, and satellite broadcasting vans — {brand} designs and builds to your operational needs.",
+      "From international standard ambulances, fire trucks, heavy-duty vehicles, and food trucks to public service vehicles — {brand} designs and builds to your operational needs.",
     "hero.ctaProducts": "View All Products",
     "hero.ctaCatalog": "Download Catalog",
     "hero.statUnits": "Units delivered",
