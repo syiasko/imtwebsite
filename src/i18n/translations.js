@@ -18,7 +18,7 @@ export const translations = {
     "hero.eyebrow": "Karoseri Custom Built",
     "hero.title": "Kendaraan Khusus, Dibangun Presisi untuk Misi Anda.",
     "hero.subtitle":
-      "Dari ambulance standar Kemenkes, mobil pemadam, rantis taktis, hingga food truck dan SNG broadcasting van — {brand} merancang & memproduksi sesuai kebutuhan operasional Anda.",
+      "Dari ambulance standar Internasional, mobil pemadam, mobil alat berat, food truck hingga mobil pelayanan publik — {brand} merancang & memproduksi sesuai kebutuhan operasional Anda.",
     "hero.ctaProducts": "Lihat Semua Produk",
     "hero.ctaCatalog": "Download Katalog",
     "hero.statUnits": "Unit dirancang",
