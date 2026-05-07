@@ -2,16 +2,17 @@ import { useEffect, useState } from "react";
 
 export default function Slideshow({ images = [], alt = "" }) {
   const [index, setIndex] = useState(0);
+  const [lightbox, setLightbox] = useState(false);
   const safe = images.filter(Boolean);
   const total = safe.length;
 
   useEffect(() => {
-    if (total <= 1) return undefined;
+    if (total <= 1 || lightbox) return undefined;
     const id = setInterval(() => {
       setIndex((i) => (i + 1) % total);
     }, 5000);
     return () => clearInterval(id);
-  }, [total]);
+  }, [total, lightbox]);
 
   if (total === 0) {
     return (
@@ -25,7 +26,12 @@ export default function Slideshow({ images = [], alt = "" }) {
 
   return (
     <div className="relative">
-      <div className="aspect-[16/9] rounded-2xl overflow-hidden bg-slate-900 shadow-lg">
+      <button
+        type="button"
+        onClick={() => setLightbox(true)}
+        aria-label="Buka pratinjau gambar"
+        className="block w-full aspect-[16/9] rounded-2xl overflow-hidden bg-slate-900 shadow-lg cursor-zoom-in relative"
+      >
         {safe.map((src, i) => (
           <img
             key={i}
@@ -36,7 +42,10 @@ export default function Slideshow({ images = [], alt = "" }) {
             }`}
           />
         ))}
-      </div>
+        <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full bg-black/60 backdrop-blur px-2.5 py-1 text-[11px] font-medium text-white pointer-events-none">
+          🔍 Klik untuk perbesar
+        </span>
+      </button>
 
       {total > 1 && (
         <>
@@ -57,11 +66,14 @@ export default function Slideshow({ images = [], alt = "" }) {
             ›
           </button>
 
-          <div className="absolute bottom-3 inset-x-0 flex justify-center gap-2">
+          <div className="absolute bottom-3 left-3 flex gap-2">
             {safe.map((_, i) => (
               <button
                 key={i}
-                onClick={() => setIndex(i)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIndex(i);
+                }}
                 aria-label={`Slide ${i + 1}`}
                 className={`h-2 rounded-full transition-all ${
                   i === index ? "w-6 bg-white" : "w-2 bg-white/60"
@@ -81,13 +93,101 @@ export default function Slideshow({ images = [], alt = "" }) {
               onClick={() => setIndex(i)}
               className={`aspect-[4/3] rounded-lg overflow-hidden border-2 transition ${
                 i === index
-                  ? "border-brand-600"
+                  ? "border-primary-600"
                   : "border-transparent opacity-70 hover:opacity-100"
               }`}
             >
               <img src={src} alt="" className="w-full h-full object-cover" />
             </button>
           ))}
+        </div>
+      )}
+
+      {lightbox && (
+        <Lightbox
+          images={safe}
+          index={index}
+          setIndex={setIndex}
+          alt={alt}
+          onClose={() => setLightbox(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function Lightbox({ images, index, setIndex, alt, onClose }) {
+  const total = images.length;
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+      else if (e.key === "ArrowLeft")
+        setIndex((i) => (i - 1 + total) % total);
+      else if (e.key === "ArrowRight") setIndex((i) => (i + 1) % total);
+    };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [setIndex, total, onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] bg-black/95 grid place-items-center p-4 animate-[toast-in_.15s_ease-out]"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Pratinjau gambar"
+      onClick={onClose}
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Tutup"
+        className="absolute top-4 right-4 h-11 w-11 rounded-full bg-white/10 hover:bg-white/20 text-white text-2xl grid place-items-center"
+      >
+        ×
+      </button>
+
+      {total > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIndex((i) => (i - 1 + total) % total);
+            }}
+            aria-label="Sebelumnya"
+            className="absolute left-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-white/10 hover:bg-white/20 text-white text-3xl grid place-items-center"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIndex((i) => (i + 1) % total);
+            }}
+            aria-label="Berikutnya"
+            className="absolute right-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-white/10 hover:bg-white/20 text-white text-3xl grid place-items-center"
+          >
+            ›
+          </button>
+        </>
+      )}
+
+      <img
+        src={images[index]}
+        alt={`${alt} ${index + 1}`}
+        className="max-w-[95vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      />
+
+      {total > 1 && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-white/10 text-white text-sm font-medium">
+          {index + 1} / {total}
         </div>
       )}
     </div>

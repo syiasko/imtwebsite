@@ -5,12 +5,13 @@ import Slideshow from "../components/Slideshow";
 import SpecTable from "../components/SpecTable";
 import CatalogDownloadButton from "../components/CatalogDownloadButton";
 import { trackEvent } from "../firebase/config";
+import { findVehicleByParam, vehiclePath } from "../utils/slug";
 
 export default function VehicleDetail() {
-  const { id } = useParams();
+  const { slug } = useParams();
   const { vehicles, categories, company } = useData();
   const { t } = useT();
-  const vehicle = vehicles.find((v) => v.id === id);
+  const vehicle = findVehicleByParam(vehicles, slug);
 
   if (!vehicle) {
     return (
@@ -142,7 +143,7 @@ export default function VehicleDetail() {
             {related.map((v) => (
               <Link
                 key={v.id}
-                to={`/produk/${v.id}`}
+                to={vehiclePath(v)}
                 className="bg-white rounded-2xl overflow-hidden border border-slate-200 hover:shadow-md transition"
               >
                 <img

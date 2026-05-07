@@ -48,7 +48,7 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/produk" element={<Products />} />
           <Route path="/produk/kategori/:slug" element={<Products />} />
-          <Route path="/produk/:id" element={<VehicleDetail />} />
+          <Route path="/produk/:slug" element={<VehicleDetail />} />
           <Route path="/katalog-cetak" element={<CatalogPrint />} />
           <Route path="/kontak" element={<Contact />} />
           <Route path={ADMIN_BASE_PATH} element={<Admin />}>
