@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useData } from "../context/DataContext";
 import { useT } from "../context/LanguageContext";
@@ -53,22 +54,7 @@ export default function Home() {
           </div>
 
           <div className="hidden md:block">
-            <div className="grid grid-cols-2 gap-4">
-              {featured.slice(0, 4).map((v, i) => (
-                <div
-                  key={v.id}
-                  className={`rounded-2xl overflow-hidden shadow-2xl border border-white/10 ${
-                    i % 2 === 0 ? "translate-y-4" : ""
-                  }`}
-                >
-                  <img
-                    src={v.images?.[0]}
-                    alt={v.name}
-                    className="w-full h-44 object-cover"
-                  />
-                </div>
-              ))}
-            </div>
+            <HeroTileGrid categories={categories} vehicles={vehicles} />
           </div>
         </div>
       </section>
@@ -163,6 +149,84 @@ function SectionHeader({ eyebrow, title, subtitle, cta }) {
         )}
       </div>
       {cta}
+    </div>
+  );
+}
+
+function HeroTileGrid({ categories, vehicles }) {
+  // Pick categories that actually have at least one photo, max 4 tiles.
+  const tiles = useMemo(() => {
+    return categories
+      .map((cat) => ({
+        category: cat,
+        items: vehicles.filter(
+          (v) => v.categoryId === cat.id && v.images?.length > 0
+        ),
+      }))
+      .filter((t) => t.items.length > 0)
+      .slice(0, 4);
+  }, [categories, vehicles]);
+
+  if (tiles.length === 0) return null;
+
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      {tiles.map(({ category, items }, i) => (
+        <HeroTile
+          key={category.id}
+          category={category}
+          items={items}
+          tileIndex={i}
+        />
+      ))}
+    </div>
+  );
+}
+
+function HeroTile({ category, items, tileIndex }) {
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  useEffect(() => {
+    if (items.length <= 1) return undefined;
+    // Stagger so all tiles don't flip at the same instant.
+    const offset = tileIndex * 1000;
+    let intervalId = null;
+    const timeoutId = setTimeout(() => {
+      setActiveIdx((i) => (i + 1) % items.length);
+      intervalId = setInterval(() => {
+        setActiveIdx((i) => (i + 1) % items.length);
+      }, 4000);
+    }, offset);
+    return () => {
+      clearTimeout(timeoutId);
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [items.length, tileIndex]);
+
+  return (
+    <div
+      className={`relative rounded-2xl overflow-hidden shadow-2xl border border-white/10 h-44 ${
+        tileIndex % 2 === 0 ? "translate-y-4" : ""
+      }`}
+    >
+      {items.map((item, i) => (
+        <img
+          key={item.id}
+          src={item.images?.[0]}
+          alt={item.name}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
+            i === activeIdx ? "opacity-100" : "opacity-0"
+          }`}
+        />
+      ))}
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-3 py-2">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-secondary-300">
+          {category.name}
+        </p>
+        <p className="text-xs font-medium text-white truncate">
+          {items[activeIdx]?.name}
+        </p>
+      </div>
     </div>
   );
 }
