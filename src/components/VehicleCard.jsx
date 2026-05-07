@@ -1,12 +1,13 @@
 import { Link } from "react-router-dom";
 import { useT } from "../context/LanguageContext";
+import { vehiclePath } from "../utils/slug";
 
 export default function VehicleCard({ vehicle, categoryName }) {
   const { t } = useT();
   const cover = vehicle.images?.[0];
   return (
     <Link
-      to={`/produk/${vehicle.id}`}
+      to={vehiclePath(vehicle)}
       className="group bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-200 hover:shadow-lg hover:-translate-y-0.5 transition"
     >
       <div className="aspect-[4/3] bg-slate-100 overflow-hidden">

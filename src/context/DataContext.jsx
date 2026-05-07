@@ -28,15 +28,9 @@ import {
 } from "../firebase/api";
 import { ensureAnonAuth } from "../firebase/config";
 import { sha256Hex } from "../firebase/password";
+import { slugify } from "../utils/slug";
 
 const DataContext = createContext(null);
-
-const slugify = (str) =>
-  str
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 
 export function DataProvider({ children }) {
   const [categories, setCategories] = useState([]);
@@ -130,8 +124,10 @@ export function DataProvider({ children }) {
   // --- Vehicles
   const upsertVehicle = useCallback(async (vehicle) => {
     const id = vehicle.id || `v-${Date.now()}`;
+    const baseSlug = slugify(vehicle.slug || vehicle.name || id);
     const next = {
       id,
+      slug: baseSlug,
       name: vehicle.name.trim(),
       categoryId: vehicle.categoryId,
       tagline: vehicle.tagline?.trim() || "",

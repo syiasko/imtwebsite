@@ -72,6 +72,7 @@ export const initialCategories = [
 export const initialVehicles = [
   {
     id: "v-pemadam-1",
+    slug: "fire-truck-rapid-intervention-4x4",
     name: "Fire Truck Rapid Intervention 4x4",
     categoryId: "pemadam",
     tagline: "Respon cepat untuk akses kawasan padat & off-road ringan.",
@@ -100,6 +101,7 @@ export const initialVehicles = [
   },
   {
     id: "v-ambulance-1",
+    slug: "ambulance-emergency-type-c",
     name: "Ambulance Emergency Type C",
     categoryId: "ambulance",
     tagline: "Standar Kemenkes RI - lengkap dengan ICU equipment.",
@@ -128,6 +130,7 @@ export const initialVehicles = [
   },
   {
     id: "v-golf-1",
+    slug: "golf-car-elektrik-6-penumpang",
     name: "Golf Car Elektrik 6 Penumpang",
     categoryId: "golf-car",
     tagline: "Operasional senyap & bebas emisi untuk resort dan kawasan.",
@@ -156,6 +159,7 @@ export const initialVehicles = [
   },
   {
     id: "v-rantis-1",
+    slug: "rantis-patroli-apc-light",
     name: "Rantis Patroli APC Light",
     categoryId: "rantis",
     tagline: "Mobilitas tinggi untuk operasi pengamanan & pengendalian massa.",
@@ -185,6 +189,7 @@ export const initialVehicles = [
   },
   {
     id: "v-foodtruck-1",
+    slug: "food-truck-premium-series",
     name: "Food Truck Premium Series",
     categoryId: "food-truck",
     tagline: "Dapur komersial mobile dengan layout fully customizable.",
@@ -214,6 +219,7 @@ export const initialVehicles = [
   },
   {
     id: "v-satelit-1",
+    slug: "sng-satellite-broadcasting-van",
     name: "SNG Satellite Broadcasting Van",
     categoryId: "satelit",
     tagline: "Mobile uplink untuk live broadcasting dari lokasi remote.",
