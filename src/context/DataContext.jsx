@@ -11,6 +11,8 @@ import {
   initialCategories,
   initialVehicles,
   initialCompanySettings,
+  DEFAULT_MAPS_PLACE_QUERY,
+  buildMapsEmbedUrl,
 } from "../data/initialData";
 import {
   deleteCategoryDoc,
@@ -91,7 +93,25 @@ export function DataProvider({ children }) {
       unsubVeh = subscribeVehicles((rows) => setVehicles(rows), onSubError);
       unsubUsers = subscribeUsers((rows) => setUsers(rows), onSubError);
       unsubCompany = subscribeCompany((data) => {
-        setCompany((prev) => ({ ...initialCompanySettings, ...(data || prev) }));
+        setCompany((prev) => {
+          const merged = { ...initialCompanySettings, ...(data || prev) };
+          // Migration: existing Firestore docs from the original seed have a
+          // mapsEmbedUrl built from the raw address string, which Google
+          // Maps renders without the proper Place pin. If we detect that
+          // legacy URL, swap it for the new place-name-based default at
+          // read time so the public site is immediately correct, without
+          // forcing the admin to re-save settings.
+          const legacyAddressEmbed = `https://maps.google.com/maps?q=${encodeURIComponent(
+            initialCompanySettings.address
+          )}&output=embed`;
+          if (
+            merged.mapsEmbedUrl === legacyAddressEmbed &&
+            DEFAULT_MAPS_PLACE_QUERY
+          ) {
+            merged.mapsEmbedUrl = buildMapsEmbedUrl(DEFAULT_MAPS_PLACE_QUERY);
+          }
+          return merged;
+        });
         setLoading(false);
         setFirestoreError(null);
       }, onSubError);

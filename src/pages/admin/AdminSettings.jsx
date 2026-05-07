@@ -7,6 +7,10 @@ import {
   verifyAdminPassword,
 } from "../../firebase/password";
 import { ADMIN_BASE_PATH, isCurrentAdmin } from "../Admin";
+import {
+  DEFAULT_MAPS_PLACE_QUERY,
+  buildMapsEmbedUrl,
+} from "../../data/initialData";
 
 export default function AdminSettings() {
   if (!isCurrentAdmin()) {
@@ -50,12 +54,18 @@ function AdminSettingsInner() {
     setSavingMsg("");
     setSavingErr("");
     try {
-      // Auto-derive Maps embed URL from address if user clears the embed field.
+      // Auto-derive Maps embed URL when admin clears the field. Prefer the
+      // recognised Place query (drops a properly labelled pin), fall back
+      // to address only when no place query is set.
       const next = { ...draft };
-      if (!next.mapsEmbedUrl && next.address) {
-        next.mapsEmbedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(
-          next.address
-        )}&output=embed`;
+      if (!next.mapsEmbedUrl) {
+        const fallbackQuery =
+          next.mapsPlaceQuery?.trim() ||
+          DEFAULT_MAPS_PLACE_QUERY ||
+          next.address;
+        if (fallbackQuery) {
+          next.mapsEmbedUrl = buildMapsEmbedUrl(fallbackQuery);
+        }
       }
       await updateCompany(next);
       setSavingMsg("Pengaturan tersimpan.");
@@ -63,6 +73,16 @@ function AdminSettingsInner() {
     } catch (err) {
       setSavingErr(err.message || "Gagal menyimpan.");
     }
+  };
+
+  const applyMapsDefault = () => {
+    const query =
+      draft.mapsPlaceQuery?.trim() || DEFAULT_MAPS_PLACE_QUERY;
+    setDraft((d) => ({
+      ...d,
+      mapsPlaceQuery: query,
+      mapsEmbedUrl: buildMapsEmbedUrl(query),
+    }));
   };
 
   const onUploadCatalog = (e) => {
@@ -195,8 +215,11 @@ function AdminSettingsInner() {
         <div>
           <h2 className="text-lg font-bold text-slate-900">Google Maps</h2>
           <p className="text-sm text-slate-500">
-            Embed URL otomatis dibuat dari alamat. Override manual kalau ingin
-            pin tepat: di Google Maps → Share → Embed a map → copy URL <code>src</code>.
+            Pin di footer dibuat dari "Maps Place Query" — gunakan nama
+            tempat yang sudah terdaftar di Google Maps (mis.{" "}
+            <code>{DEFAULT_MAPS_PLACE_QUERY}</code>) supaya marker tampil
+            dengan label yang benar. Kalau perlu kontrol penuh, paste
+            <code> src</code> embed dari Google Maps → Share → Embed a map.
           </p>
         </div>
         <div className="grid md:grid-cols-2 gap-4">
@@ -207,12 +230,35 @@ function AdminSettingsInner() {
             className="md:col-span-2"
           />
           <Field
-            label="Maps Embed URL (iframe src)"
-            value={draft.mapsEmbedUrl}
-            onChange={(v) => update("mapsEmbedUrl", v)}
-            hint="Kosongkan untuk auto-generate dari alamat"
+            label="Maps Place Query (nama tempat di Google Maps)"
+            value={draft.mapsPlaceQuery}
+            onChange={(v) => update("mapsPlaceQuery", v)}
+            hint="Pin akan dijatuhkan ke tempat dengan nama persis ini di Google Maps."
             className="md:col-span-2"
           />
+          <div className="md:col-span-2">
+            <div className="flex items-baseline justify-between mb-1">
+              <label className="block text-sm font-medium text-slate-700">
+                Maps Embed URL (iframe src)
+              </label>
+              <button
+                type="button"
+                onClick={applyMapsDefault}
+                className="text-xs font-semibold text-primary-700 hover:underline"
+              >
+                Pakai default dari Place Query
+              </button>
+            </div>
+            <input
+              type="text"
+              value={draft.mapsEmbedUrl || ""}
+              onChange={(e) => update("mapsEmbedUrl", e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600"
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Kosongkan untuk auto-rebuild dari Place Query saat disimpan.
+            </p>
+          </div>
         </div>
 
         <hr className="border-slate-200" />
