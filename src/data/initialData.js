@@ -249,9 +249,19 @@ export const initialVehicles = [
   },
 ];
 
-// Default address used to auto-build a Google Maps embed when admin hasn't set a custom one.
+// Default address used in the public site copy.
 const defaultAddress =
   "Kp. Babakan Rawahaur No. 100, Babakan Madang, Sentul, Jawa Barat 16810";
+
+// Google Maps recognises this as a registered Place — searching for it
+// drops the pin on the workshop with the correct label, which is what we
+// want on the footer map. Fall back to the raw address only if a future
+// admin clears this field.
+export const DEFAULT_MAPS_PLACE_QUERY =
+  "PT. Indraprasta Mulia Teknik Karoseri 100";
+
+export const buildMapsEmbedUrl = (query) =>
+  `https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed`;
 
 export const initialCompanySettings = {
   name: "PT. INDRAPRASTA MULIA TEKNIK",
@@ -269,9 +279,8 @@ export const initialCompanySettings = {
     "Saksikan langsung proses produksi & hasil unit kendaraan khusus kami.",
   // Maps
   mapsShareUrl: "https://maps.app.goo.gl/ten5WKJodV3D2RHk6",
-  mapsEmbedUrl: `https://maps.google.com/maps?q=${encodeURIComponent(
-    defaultAddress
-  )}&output=embed`,
+  mapsPlaceQuery: DEFAULT_MAPS_PLACE_QUERY,
+  mapsEmbedUrl: buildMapsEmbedUrl(DEFAULT_MAPS_PLACE_QUERY),
   // Catalog PDF (data URL or external URL). Empty string => fall back to print catalog.
   catalogPdfUrl: "",
   catalogPdfName: "",
