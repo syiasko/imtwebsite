@@ -16,6 +16,7 @@ import {
 } from "../data/initialData";
 import {
   deleteCategoryDoc,
+  deleteContactMessage,
   deleteUserDoc,
   deleteVehicleDoc,
   saveCategory,
@@ -25,8 +26,10 @@ import {
   seedIfEmpty,
   subscribeCategories,
   subscribeCompany,
+  subscribeContactMessages,
   subscribeUsers,
   subscribeVehicles,
+  updateContactMessageStatus,
 } from "../firebase/api";
 import { ensureAnonAuth } from "../firebase/config";
 import { sha256Hex } from "../firebase/password";
@@ -38,6 +41,7 @@ export function DataProvider({ children }) {
   const [categories, setCategories] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [users, setUsers] = useState([]);
+  const [messages, setMessages] = useState([]);
   const [company, setCompany] = useState(initialCompanySettings);
   const [loading, setLoading] = useState(true);
   const [authStatus, setAuthStatus] = useState("idle"); // idle | ok | error
@@ -50,6 +54,7 @@ export function DataProvider({ children }) {
     let unsubVeh = () => {};
     let unsubCompany = () => {};
     let unsubUsers = () => {};
+    let unsubMessages = () => {};
     let cancelled = false;
 
     (async () => {
@@ -92,6 +97,13 @@ export function DataProvider({ children }) {
       );
       unsubVeh = subscribeVehicles((rows) => setVehicles(rows), onSubError);
       unsubUsers = subscribeUsers((rows) => setUsers(rows), onSubError);
+      unsubMessages = subscribeContactMessages(
+        (rows) => setMessages(rows),
+        // Don't surface errors here — anonymous visitors can hit a permission
+        // denied if the rules don't allow read; that's fine, we just won't
+        // populate the admin list for them.
+        () => {}
+      );
       unsubCompany = subscribeCompany((data) => {
         setCompany((prev) => {
           const merged = { ...initialCompanySettings, ...(data || prev) };
@@ -123,6 +135,7 @@ export function DataProvider({ children }) {
       unsubVeh();
       unsubCompany();
       unsubUsers();
+      unsubMessages();
     };
   }, []);
 
@@ -197,6 +210,16 @@ export function DataProvider({ children }) {
   );
   const deleteUser = useCallback((id) => deleteUserDoc(id), []);
 
+  // --- Contact messages
+  const setMessageStatus = useCallback(
+    (id, status) => updateContactMessageStatus(id, status),
+    []
+  );
+  const deleteMessage = useCallback(
+    (id) => deleteContactMessage(id),
+    []
+  );
+
   // --- Reset
   const resetData = useCallback(async () => {
     for (const c of initialCategories) await saveCategory(c);
@@ -209,6 +232,7 @@ export function DataProvider({ children }) {
       categories,
       vehicles,
       users,
+      messages,
       company,
       loading,
       authStatus,
@@ -221,12 +245,15 @@ export function DataProvider({ children }) {
       updateCompany,
       upsertUser,
       deleteUser,
+      setMessageStatus,
+      deleteMessage,
       resetData,
     }),
     [
       categories,
       vehicles,
       users,
+      messages,
       company,
       loading,
       authStatus,
@@ -239,6 +266,8 @@ export function DataProvider({ children }) {
       updateCompany,
       upsertUser,
       deleteUser,
+      setMessageStatus,
+      deleteMessage,
       resetData,
     ]
   );

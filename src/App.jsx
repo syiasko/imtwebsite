@@ -12,6 +12,7 @@ import AdminCategories from "./pages/admin/AdminCategories";
 import AdminVehicles from "./pages/admin/AdminVehicles";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminUsers from "./pages/admin/AdminUsers";
+import AdminMessages from "./pages/admin/AdminMessages";
 import ToastViewport from "./components/Toast";
 import { trackPageView } from "./firebase/config";
 import { useT } from "./context/LanguageContext";
@@ -54,6 +55,7 @@ export default function App() {
           <Route path={ADMIN_BASE_PATH} element={<Admin />}>
             <Route path="kategori" element={<AdminCategories />} />
             <Route path="kendaraan" element={<AdminVehicles />} />
+            <Route path="pesan" element={<AdminMessages />} />
             <Route path="pengaturan" element={<AdminSettings />} />
             <Route path="pengguna" element={<AdminUsers />} />
           </Route>

@@ -94,18 +94,18 @@ export const translations = {
     "contact.form.email": "Email",
     "contact.form.phone": "No. Telepon",
     "contact.form.company": "Perusahaan / Instansi",
-    "contact.form.interest": "Jenis Kendaraan yang Diminati",
+    "contact.form.subject": "Subjek / Topik",
     "contact.form.message": "Pesan",
     "contact.form.messagePlaceholder": "Ceritakan kebutuhan unit Anda...",
     "contact.form.submit": "Kirim Pesan",
     "contact.confirm.title": "Kirim Pesan?",
     "contact.confirm.desc":
-      "Pesan akan dikirim ke {email}. Email client Anda akan terbuka dengan pesan yang sudah diisi otomatis.",
+      "Pesan akan dikirim ke tim kami dan akan dibalas via email secepatnya.",
     "contact.confirm.yes": "Ya, Kirim",
     "contact.confirm.no": "Batal",
     "contact.success.title": "Pesan Terkirim!",
     "contact.success.desc":
-      "Email client Anda sudah terbuka. Klik tombol Send untuk mengirim ke {email}. Tim kami juga sudah menerima salinan pesan Anda.",
+      "Terima kasih, pesan Anda sudah kami terima. Tim kami akan menghubungi Anda lewat email pada jam kerja.",
     "contact.success.close": "Tutup",
 
     "footer.aboutHeading": "Tentang",
@@ -210,18 +210,18 @@ export const translations = {
     "contact.form.email": "Email",
     "contact.form.phone": "Phone Number",
     "contact.form.company": "Company / Organization",
-    "contact.form.interest": "Vehicle of Interest",
+    "contact.form.subject": "Subject",
     "contact.form.message": "Message",
     "contact.form.messagePlaceholder": "Describe your unit requirements...",
     "contact.form.submit": "Send Message",
     "contact.confirm.title": "Send Message?",
     "contact.confirm.desc":
-      "The message will be sent to {email}. Your email client will open with the message pre-filled.",
+      "Your message will be sent to our team and we'll reply via email shortly.",
     "contact.confirm.yes": "Yes, Send",
     "contact.confirm.no": "Cancel",
     "contact.success.title": "Message Sent!",
     "contact.success.desc":
-      "Your email client has been opened. Click Send to deliver to {email}. Our team has also received a copy of your message.",
+      "Thank you — your message has been received. Our team will reach out via email during business hours.",
     "contact.success.close": "Close",
 
     "footer.aboutHeading": "About",
