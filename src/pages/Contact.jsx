@@ -3,6 +3,7 @@ import { useData } from "../context/DataContext";
 import { useT } from "../context/LanguageContext";
 import { trackEvent } from "../firebase/config";
 import { saveContactMessage } from "../firebase/api";
+import { useToast } from "../context/ToastContext";
 import Modal from "../components/Modal";
 
 const initialForm = {
@@ -10,16 +11,17 @@ const initialForm = {
   email: "",
   phone: "",
   company: "",
-  interest: "",
+  subject: "",
   message: "",
 };
 
 export default function Contact() {
   const { company } = useData();
   const { t } = useT();
+  const toast = useToast();
   const formRef = useRef(null);
   const [form, setForm] = useState(initialForm);
-  const [stage, setStage] = useState("idle"); // idle | confirm | success
+  const [stage, setStage] = useState("idle"); // idle | confirm | sending | success
   const [error, setError] = useState("");
 
   const waNumber = (company.whatsapp || company.phone || "").replace(/\D/g, "");
@@ -33,35 +35,19 @@ export default function Contact() {
     setStage("confirm");
   };
 
-  const buildMailtoBody = () =>
-    [
-      `Nama   : ${form.name}`,
-      `Email  : ${form.email}`,
-      `Telp   : ${form.phone}`,
-      form.company && `Inst.  : ${form.company}`,
-      form.interest && `Minat  : ${form.interest}`,
-      "",
-      form.message,
-    ]
-      .filter(Boolean)
-      .join("\n");
-
   const onConfirm = async () => {
+    setStage("sending");
+    setError("");
     try {
       await saveContactMessage(form);
+      trackEvent("contact_form_submit", { has_company: !!form.company });
+      setStage("success");
     } catch (err) {
-      console.warn("Failed to persist message to Firestore:", err);
+      console.error("Failed to save message:", err);
+      setError(err?.message || "Gagal mengirim pesan.");
+      setStage("confirm");
+      toast.error("Gagal mengirim pesan, coba lagi.");
     }
-    trackEvent("contact_form_submit", { has_company: !!form.company });
-
-    const subject = `[Website] Pesan dari ${form.name}`;
-    const body = buildMailtoBody();
-    const mailto = `mailto:${encodeURIComponent(
-      company.email
-    )}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.location.href = mailto;
-
-    setStage("success");
   };
 
   const onCloseSuccess = () => {
@@ -137,9 +123,10 @@ export default function Contact() {
             onChange={(v) => update("company", v)}
           />
           <Field
-            label={t("contact.form.interest")}
-            value={form.interest}
-            onChange={(v) => update("interest", v)}
+            label={t("contact.form.subject")}
+            value={form.subject}
+            onChange={(v) => update("subject", v)}
+            required
           />
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -162,39 +149,40 @@ export default function Contact() {
           )}
           <button
             type="submit"
-            className="w-full px-5 py-3 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-semibold"
+            disabled={stage === "sending"}
+            className="w-full px-5 py-3 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-semibold disabled:opacity-60"
           >
-            {t("contact.form.submit")}
+            {stage === "sending" ? "Mengirim..." : t("contact.form.submit")}
           </button>
         </form>
       </div>
 
       <Modal
-        open={stage === "confirm"}
-        onClose={() => setStage("idle")}
+        open={stage === "confirm" || stage === "sending"}
+        onClose={() => stage !== "sending" && setStage("idle")}
         title={t("contact.confirm.title")}
         footer={
           <>
             <button
               type="button"
               onClick={() => setStage("idle")}
-              className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 font-semibold hover:bg-white"
+              disabled={stage === "sending"}
+              className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 font-semibold hover:bg-white disabled:opacity-60"
             >
               {t("contact.confirm.no")}
             </button>
             <button
               type="button"
               onClick={onConfirm}
-              className="px-4 py-2 rounded-lg font-semibold bg-primary-600 hover:bg-primary-700 text-white"
+              disabled={stage === "sending"}
+              className="px-4 py-2 rounded-lg font-semibold bg-primary-600 hover:bg-primary-700 text-white disabled:opacity-60"
             >
-              {t("contact.confirm.yes")}
+              {stage === "sending" ? "Mengirim..." : t("contact.confirm.yes")}
             </button>
           </>
         }
       >
-        <p className="text-sm">
-          {t("contact.confirm.desc", { email: company.email })}
-        </p>
+        <p className="text-sm">{t("contact.confirm.desc")}</p>
       </Modal>
 
       <Modal
@@ -213,7 +201,7 @@ export default function Contact() {
       >
         <div className="space-y-3 text-sm">
           <div className="flex justify-center text-4xl">✅</div>
-          <p>{t("contact.success.desc", { email: company.email })}</p>
+          <p>{t("contact.success.desc")}</p>
         </div>
       </Modal>
     </div>

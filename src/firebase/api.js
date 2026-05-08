@@ -1,12 +1,16 @@
 import {
+  addDoc,
   collection,
   doc,
   deleteDoc,
   getDoc,
   getDocs,
   onSnapshot,
+  orderBy,
   query,
+  serverTimestamp,
   setDoc,
+  updateDoc,
   where,
   writeBatch,
 } from "firebase/firestore";
@@ -16,6 +20,7 @@ const CATEGORIES = "categories";
 const VEHICLES = "vehicles";
 const SETTINGS = "settings";
 const USERS = "users";
+const CONTACT_MESSAGES = "contact_messages";
 const COMPANY_DOC = "company";
 
 const stripUndefined = (obj) =>
@@ -108,14 +113,41 @@ export const usersExist = async () => {
 };
 
 // --- Contact messages ----------------------------------------------------
-export const saveContactMessage = (message) => {
-  const id = `msg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  return setDoc(doc(db, "messages", id), {
-    id,
+export const STATUS_NEW = "New";
+export const STATUS_READ = "Read";
+export const STATUS_REPLIED = "Replied";
+
+export const saveContactMessage = async (message) => {
+  const ref = await addDoc(collection(db, CONTACT_MESSAGES), {
     ...stripUndefined(message),
-    createdAt: new Date().toISOString(),
+    status: STATUS_NEW,
+    created_at: serverTimestamp(),
   });
+  return ref.id;
 };
+
+export const subscribeContactMessages = (cb, onError) => {
+  // orderBy created_at desc so newest shows first; if a doc lacks the field
+  // (legacy import) Firestore drops it from results — we tolerate that.
+  const q = query(
+    collection(db, CONTACT_MESSAGES),
+    orderBy("created_at", "desc")
+  );
+  return onSnapshot(
+    q,
+    (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (err) => onError?.(err)
+  );
+};
+
+export const updateContactMessageStatus = (id, status) =>
+  updateDoc(doc(db, CONTACT_MESSAGES, id), {
+    status,
+    updated_at: serverTimestamp(),
+  });
+
+export const deleteContactMessage = (id) =>
+  deleteDoc(doc(db, CONTACT_MESSAGES, id));
 
 // --- Initial seed --------------------------------------------------------
 export const seedIfEmpty = async ({ categories, vehicles, company }) => {

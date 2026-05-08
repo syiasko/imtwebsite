@@ -32,12 +32,16 @@ export default function Admin() {
     categories,
     vehicles,
     users,
+    messages,
     company,
     loading,
     authStatus,
     authError,
     firestoreError,
   } = useData();
+  const unreadMessages = messages.filter(
+    (m) => (m.status || "New") === "New"
+  ).length;
   const { pathname } = useLocation();
 
   const hasUsers = users.length > 0;
@@ -250,6 +254,16 @@ export default function Admin() {
         </NavLink>
         <NavLink to={`${ADMIN_BASE_PATH}/kendaraan`} className={tabClass}>
           Kendaraan ({vehicles.length})
+        </NavLink>
+        <NavLink to={`${ADMIN_BASE_PATH}/pesan`} className={tabClass}>
+          <span className="inline-flex items-center gap-1.5">
+            Pesan Kontak ({messages.length})
+            {unreadMessages > 0 && (
+              <span className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 text-[10px] font-bold text-white bg-secondary-500 rounded-full">
+                {unreadMessages}
+              </span>
+            )}
+          </span>
         </NavLink>
         {isAdmin && (
           <NavLink to={`${ADMIN_BASE_PATH}/pengguna`} className={tabClass}>
