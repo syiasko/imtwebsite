@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { QRCodeCanvas } from "qrcode.react";
 import Header from "./Header";
 import KioskYouTubePlayer, { parseYoutubeUrl } from "./KioskYouTubePlayer";
 
@@ -256,27 +257,65 @@ export default function VehicleDetail({ vehicle, company, onBack }) {
             </div>
           )}
 
-          <div className="mt-10 rounded-2xl bg-primary-900 text-white p-6 flex flex-wrap items-center gap-4">
-            <div className="flex-1 min-w-[12rem]">
-              <p className="text-sm uppercase tracking-widest text-primary-200">
-                Tertarik dengan unit ini?
-              </p>
-              <p className="mt-1 text-lg font-semibold">
-                Kunjungi tim sales kami atau hubungi:
-              </p>
-              <p className="mt-1 text-base">
-                {company?.phone}{" "}
-                <span className="text-primary-300 mx-2">•</span>{" "}
-                {company?.email}
-              </p>
+          <div className="mt-10 rounded-3xl bg-primary-900 text-white p-8 shadow-xl shadow-primary-900/40 border border-white/10">
+            <div className="flex flex-col gap-6">
+              {/* Row 1: Title */}
+              <div>
+                <p className="text-sm font-bold uppercase tracking-widest text-primary-300">
+                  Tertarik dengan unit ini?
+                </p>
+                <h2 className="mt-1 text-2xl font-extrabold leading-tight">
+                  Hubungi kami di:
+                </h2>
+              </div>
+
+              {/* Row 2: Phone & Email */}
+              <div className="p-5 rounded-2xl bg-white/5 border border-white/10 flex flex-wrap items-center gap-x-8 gap-y-2">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-primary-400">Telepon</p>
+                  <p className="text-xl font-mono font-bold text-secondary-400">{company?.phone}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-primary-400">Email</p>
+                  <p className="text-lg text-primary-100">{company?.email}</p>
+                </div>
+              </div>
+
+              {/* Row 3 & 4: QR Codes in vertical stack */}
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-6 p-5 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-sm">
+                  <div className="shrink-0 p-2 bg-white rounded-lg shadow-inner">
+                    <QRCodeCanvas
+                      value={`https://wa.me/${(company?.whatsapp || "").replace(/\D/g, "")}`}
+                      size={90}
+                      level="M"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold uppercase tracking-widest text-primary-300">Scan WhatsApp</p>
+                    <p className="text-lg font-bold leading-tight mt-1">Chat dengan Sales</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-6 p-5 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-sm">
+                  <div className="shrink-0 p-2 bg-white rounded-lg shadow-inner">
+                    <QRCodeCanvas
+                      value={
+                        company?.catalogPdfUrl && company.catalogPdfUrl.startsWith("http")
+                          ? company.catalogPdfUrl
+                          : "https://imtindonesia.com/catalog"
+                      }
+                      size={90}
+                      level="M"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold uppercase tracking-widest text-primary-300">Scan Catalogue</p>
+                    <p className="text-lg font-bold leading-tight mt-1 text-secondary-400">Download PDF</p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={onBack}
-              className="px-6 py-3 rounded-xl bg-secondary-500 hover:bg-secondary-600 text-black font-bold text-lg active:scale-95 transition"
-            >
-              ← Daftar Produk
-            </button>
           </div>
         </section>
       </main>
