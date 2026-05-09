@@ -11,6 +11,7 @@ const emptyDraft = {
   categoryId: "",
   tagline: "",
   description: "",
+  youtubeUrl: "",
   images: [],
   specs: {},
   features: [],
@@ -395,6 +396,25 @@ function VehicleForm({
           }
           className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600"
         />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1">
+          URL Video YouTube
+        </label>
+        <input
+          type="url"
+          value={draft.youtubeUrl || ""}
+          onChange={(e) =>
+            setDraft((p) => ({ ...p, youtubeUrl: e.target.value }))
+          }
+          placeholder="https://www.youtube.com/watch?v=XXXXXXXX"
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600"
+        />
+        <p className="mt-1 text-xs text-slate-500">
+          Video akan tampil di slideshow detail unit (signage & web). Kosongkan
+          jika tidak ada video.
+        </p>
       </div>
 
       <div>

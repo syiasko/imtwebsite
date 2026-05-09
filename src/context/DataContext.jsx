@@ -165,6 +165,7 @@ export function DataProvider({ children }) {
       categoryId: vehicle.categoryId,
       tagline: vehicle.tagline?.trim() || "",
       description: vehicle.description?.trim() || "",
+      youtubeUrl: vehicle.youtubeUrl?.trim() || "",
       images:
         Array.isArray(vehicle.images) && vehicle.images.length > 0
           ? vehicle.images
