@@ -28,22 +28,29 @@ export default function VehicleList({ grouped, company, onSelect }) {
         </p>
 
         {grouped.length > 1 && (
-          <div className="mt-6 flex flex-wrap gap-3 overflow-x-auto no-scrollbar">
-            <CategoryPill
-              label="Semua"
-              count={totalUnits}
-              active={activeCat === "all"}
-              onClick={() => setActiveCat("all")}
-            />
-            {grouped.map(({ category, items }) => (
+          <div
+            // Always single-row scroll so it doesn't dominate the screen on
+            // portrait kiosks (where flex-wrap would push the grid below the
+            // fold). Negative margin lets the scroll edge hug the viewport.
+            className="mt-6 -mx-8 lg:-mx-12 px-8 lg:px-12 overflow-x-auto no-scrollbar"
+          >
+            <div className="flex flex-nowrap gap-3 w-max pb-1">
               <CategoryPill
-                key={category.id}
-                label={category.name}
-                count={items.length}
-                active={activeCat === category.id}
-                onClick={() => setActiveCat(category.id)}
+                label="Semua"
+                count={totalUnits}
+                active={activeCat === "all"}
+                onClick={() => setActiveCat("all")}
               />
-            ))}
+              {grouped.map(({ category, items }) => (
+                <CategoryPill
+                  key={category.id}
+                  label={category.name}
+                  count={items.length}
+                  active={activeCat === category.id}
+                  onClick={() => setActiveCat(category.id)}
+                />
+              ))}
+            </div>
           </div>
         )}
       </section>

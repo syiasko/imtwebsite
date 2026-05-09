@@ -1,32 +1,57 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Header from "./Header";
+import KioskYouTubePlayer, { parseYoutubeUrl } from "./KioskYouTubePlayer";
 
 const SLIDE_INTERVAL_MS = 5000;
 
 export default function VehicleDetail({ vehicle, company, onBack }) {
-  const [activeImage, setActiveImage] = useState(0);
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [lightbox, setLightbox] = useState(false);
+
+  // Build a unified slide list: images first, then a video slide if the
+  // vehicle has a parsable YouTube URL. Each slide carries a `type` tag so
+  // the renderer can branch between <img> and <iframe>.
+  const slides = useMemo(() => {
+    if (!vehicle) return [];
+    const out = (vehicle.images || [])
+      .filter(Boolean)
+      .map((src, i) => ({ type: "image", src, index: i }));
+    if (vehicle.youtubeUrl && parseYoutubeUrl(vehicle.youtubeUrl)) {
+      out.push({ type: "video", url: vehicle.youtubeUrl });
+    }
+    return out;
+  }, [vehicle]);
 
   useEffect(() => {
-    setActiveImage(0);
+    setActiveSlide(0);
+    setLightbox(false);
   }, [vehicle?.id]);
 
-  const images = vehicle?.images?.filter(Boolean) || [];
+  const active = slides[activeSlide];
 
+  // Auto-cycle, but skip while showing the video slide (the user is
+  // presumably watching) and while the lightbox is open.
   useEffect(() => {
-    if (images.length <= 1) return undefined;
+    if (slides.length <= 1) return undefined;
+    if (active?.type === "video") return undefined;
+    if (lightbox) return undefined;
     const id = setInterval(() => {
-      setActiveImage((i) => (i + 1) % images.length);
+      setActiveSlide((i) => {
+        // Skip past video slide so auto-cycle doesn't dump us into autoplay.
+        let next = (i + 1) % slides.length;
+        if (slides[next]?.type === "video") {
+          next = (next + 1) % slides.length;
+        }
+        return next;
+      });
     }, SLIDE_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [images.length]);
+  }, [slides, active, lightbox]);
 
   if (!vehicle) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <Header
-          company={company}
-          leading={<BackButton onClick={onBack} />}
-        />
+        <Header company={company} leading={<BackButton onClick={onBack} />} />
         <div className="px-8 lg:px-12 py-24 text-center">
           <p className="text-7xl">🔎</p>
           <h1 className="mt-4 text-3xl font-bold text-primary-900">
@@ -48,6 +73,11 @@ export default function VehicleDetail({ vehicle, company, onBack }) {
   }
 
   const specEntries = Object.entries(vehicle.specs || {});
+  const imageCount = slides.filter((s) => s.type === "image").length;
+
+  const onMainClick = () => {
+    if (active?.type === "image") setLightbox(true);
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 anim-fade-in">
@@ -55,30 +85,68 @@ export default function VehicleDetail({ vehicle, company, onBack }) {
 
       <main className="px-8 lg:px-12 py-10 grid lg:grid-cols-2 gap-10">
         <section>
-          <div className="relative aspect-[4/3] rounded-3xl overflow-hidden bg-slate-900 shadow-xl">
-            {images.length > 0 ? (
-              images.map((src, i) => (
-                <img
-                  key={i}
-                  src={src}
-                  alt={`${vehicle.name} ${i + 1}`}
-                  className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
-                    i === activeImage ? "opacity-100" : "opacity-0"
-                  }`}
-                />
-              ))
-            ) : (
+          <div
+            className={`relative aspect-[4/3] rounded-3xl overflow-hidden bg-slate-900 shadow-xl ${
+              active?.type === "image" ? "cursor-zoom-in" : ""
+            }`}
+            onClick={onMainClick}
+            role={active?.type === "image" ? "button" : undefined}
+            aria-label={
+              active?.type === "image" ? "Buka pratinjau gambar" : undefined
+            }
+          >
+            {slides.length === 0 && (
               <div className="w-full h-full grid place-items-center text-white/40 text-7xl">
                 🚛
               </div>
             )}
-            {images.length > 1 && (
-              <div className="absolute bottom-5 inset-x-0 flex justify-center gap-2">
-                {images.map((_, i) => (
+            {slides.map((s, i) =>
+              s.type === "image" ? (
+                <img
+                  key={`img-${i}`}
+                  src={s.src}
+                  alt={`${vehicle.name} ${i + 1}`}
+                  className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
+                    i === activeSlide ? "opacity-100" : "opacity-0 pointer-events-none"
+                  }`}
+                />
+              ) : (
+                <div
+                  key={`vid-${i}`}
+                  className={`absolute inset-0 transition-opacity duration-500 ${
+                    i === activeSlide ? "opacity-100" : "opacity-0 pointer-events-none"
+                  }`}
+                  // Don't let clicks on the iframe wrapper bubble up to the
+                  // lightbox handler.
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {i === activeSlide && (
+                    <KioskYouTubePlayer
+                      url={s.url}
+                      title={`Video ${vehicle.name}`}
+                    />
+                  )}
+                </div>
+              )
+            )}
+
+            {active?.type === "image" && (
+              <span className="absolute bottom-5 right-5 inline-flex items-center gap-2 rounded-full bg-black/65 backdrop-blur px-3 py-1.5 text-xs font-semibold text-white pointer-events-none">
+                🔍 Sentuh untuk perbesar
+              </span>
+            )}
+
+            {slides.length > 1 && active?.type !== "video" && (
+              <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-2 pointer-events-none">
+                {slides.map((s, i) => (
                   <span
                     key={i}
                     className={`h-2 rounded-full transition-all ${
-                      i === activeImage ? "w-8 bg-white" : "w-2 bg-white/50"
+                      i === activeSlide
+                        ? s.type === "video"
+                          ? "w-8 bg-secondary-400"
+                          : "w-8 bg-white"
+                        : "w-2 bg-white/50"
                     }`}
                   />
                 ))}
@@ -86,20 +154,45 @@ export default function VehicleDetail({ vehicle, company, onBack }) {
             )}
           </div>
 
-          {images.length > 1 && (
-            <div className="mt-4 grid grid-cols-5 gap-3">
-              {images.slice(0, 5).map((src, i) => (
+          {slides.length > 1 && (
+            <div
+              className={`mt-4 grid gap-3`}
+              style={{
+                gridTemplateColumns: `repeat(${Math.min(
+                  6,
+                  slides.length
+                )}, minmax(0, 1fr))`,
+              }}
+            >
+              {slides.slice(0, 6).map((s, i) => (
                 <button
                   key={i}
                   type="button"
-                  onClick={() => setActiveImage(i)}
-                  className={`aspect-[4/3] rounded-xl overflow-hidden border-4 transition ${
-                    i === activeImage
+                  onClick={() => {
+                    setActiveSlide(i);
+                  }}
+                  className={`relative aspect-[4/3] rounded-xl overflow-hidden border-4 transition ${
+                    i === activeSlide
                       ? "border-primary-600 shadow-md"
                       : "border-transparent opacity-70 hover:opacity-100"
                   }`}
                 >
-                  <img src={src} alt="" className="w-full h-full object-cover" />
+                  {s.type === "image" ? (
+                    <img
+                      src={s.src}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-primary-700 to-primary-900 grid place-items-center text-white">
+                      <div className="text-center">
+                        <span className="block text-2xl">▶</span>
+                        <span className="block text-[10px] font-bold uppercase tracking-widest mt-0.5">
+                          Video
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
@@ -191,6 +284,111 @@ export default function VehicleDetail({ vehicle, company, onBack }) {
       <footer className="px-8 lg:px-12 py-6 text-center text-xs text-slate-400 border-t border-slate-200">
         {company?.name} • {company?.address}
       </footer>
+
+      {lightbox && active?.type === "image" && (
+        <Lightbox
+          slides={slides}
+          activeSlide={activeSlide}
+          imageCount={imageCount}
+          alt={vehicle.name}
+          onChangeSlide={setActiveSlide}
+          onClose={() => setLightbox(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function Lightbox({ slides, activeSlide, alt, onChangeSlide, onClose }) {
+  // Restrict navigation to image slides only — the lightbox is for photos.
+  const imageSlides = slides
+    .map((s, i) => ({ ...s, originalIndex: i }))
+    .filter((s) => s.type === "image");
+  const currentImageIdx = imageSlides.findIndex(
+    (s) => s.originalIndex === activeSlide
+  );
+
+  const goImage = (delta) => {
+    if (imageSlides.length === 0) return;
+    const next =
+      (currentImageIdx + delta + imageSlides.length) % imageSlides.length;
+    onChangeSlide(imageSlides[next].originalIndex);
+  };
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+      else if (e.key === "ArrowLeft") goImage(-1);
+      else if (e.key === "ArrowRight") goImage(1);
+    };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSlide, imageSlides.length]);
+
+  const current = slides[activeSlide];
+  if (!current || current.type !== "image") return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] bg-black/95 grid place-items-center p-6 anim-fade-in"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Pratinjau gambar"
+      onClick={onClose}
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Tutup"
+        className="absolute top-6 right-6 h-14 w-14 rounded-full bg-white/10 hover:bg-white/20 text-white text-3xl grid place-items-center active:scale-95"
+      >
+        ×
+      </button>
+
+      {imageSlides.length > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              goImage(-1);
+            }}
+            aria-label="Sebelumnya"
+            className="absolute left-6 top-1/2 -translate-y-1/2 h-16 w-16 rounded-full bg-white/10 hover:bg-white/20 text-white text-4xl grid place-items-center active:scale-95"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              goImage(1);
+            }}
+            aria-label="Berikutnya"
+            className="absolute right-6 top-1/2 -translate-y-1/2 h-16 w-16 rounded-full bg-white/10 hover:bg-white/20 text-white text-4xl grid place-items-center active:scale-95"
+          >
+            ›
+          </button>
+        </>
+      )}
+
+      <img
+        src={current.src}
+        alt={`${alt} ${currentImageIdx + 1}`}
+        className="max-w-[95vw] max-h-[90vh] object-contain rounded-xl shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      />
+
+      {imageSlides.length > 1 && (
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-white/10 text-white text-base font-semibold">
+          {currentImageIdx + 1} / {imageSlides.length}
+        </div>
+      )}
     </div>
   );
 }
