@@ -10,6 +10,14 @@ const DETAIL_IDLE_TIMEOUT = 60_000;
 export default function App() {
   const { grouped, vehicles, company, loading, error } = useSignageData();
   const [view, setView] = useState({ type: "list" });
+  const [showSplash, setShowSplash] = useState(() => !sessionStorage.getItem("splashShown"));
+
+  useEffect(() => {
+    if (!loading && showSplash) {
+      sessionStorage.setItem("splashShown", "true");
+      setShowSplash(false);
+    }
+  }, [loading, showSplash]);
 
   const openDetail = useCallback((vehicleId) => {
     setView({ type: "detail", vehicleId });
@@ -38,7 +46,16 @@ export default function App() {
     };
   }, [view.type, closeDetail]);
 
-  if (loading) return <Splash company={company} />;
+  if (loading) {
+    if (showSplash) return <Splash company={company} />;
+    return (
+      <div className="min-h-screen bg-slate-50 grid place-items-center">
+        <div className="animate-pulse text-slate-400 font-medium tracking-widest uppercase">
+          Memuat data...
+        </div>
+      </div>
+    );
+  }
 
   if (error) {
     return (
