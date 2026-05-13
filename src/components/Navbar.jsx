@@ -59,10 +59,10 @@ export default function Navbar() {
             when the logo subtitle (sm:block) is hidden. */}
         <div className="sm:hidden flex-1 text-center min-w-0 px-2">
           <p className="font-bold text-slate-900 text-sm leading-tight truncate">
-            Carroserries100
+            PT. Indraprasta Mulia Teknik
           </p>
           <p className="text-[10px] text-slate-500 leading-tight truncate">
-            PT. Indraprasta Mulia Teknik
+            special vehicle manufacturer
           </p>
         </div>
 
