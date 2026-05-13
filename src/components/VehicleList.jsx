@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Header from "./Header";
 import { QRCodeCanvas } from "qrcode.react";
 
@@ -10,7 +10,20 @@ export default function VehicleList({ grouped, company, onSelect }) {
       ? grouped
       : grouped.filter((g) => g.category.id === activeCat);
 
+  const [showScrollTop, setShowScrollTop] = useState(false);
   const totalUnits = grouped.reduce((acc, g) => acc + g.items.length, 0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 400);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 anim-fade-in">
@@ -51,9 +64,9 @@ export default function VehicleList({ grouped, company, onSelect }) {
       </section>
 
       {grouped.length > 1 && (
-        <section className="px-8 lg:px-12 mb-6">
+        <section className="sticky top-0 z-30 px-8 lg:px-12 py-4 bg-slate-50/90 backdrop-blur-md border-b border-slate-200/60 shadow-sm transition-all duration-300">
           <div className="overflow-x-auto no-scrollbar -mx-8 lg:-mx-12 px-8 lg:px-12">
-            <div className="flex flex-nowrap gap-3 w-max pb-1">
+            <div className="flex flex-nowrap gap-3 w-max">
               <CategoryPill
                 label="Semua"
                 count={totalUnits}
@@ -74,7 +87,7 @@ export default function VehicleList({ grouped, company, onSelect }) {
         </section>
       )}
 
-      <main className="px-8 lg:px-12 pb-12 space-y-12">
+      <main className="px-8 lg:px-12 pt-12 pb-12 space-y-12">
         {visibleGroups.length === 0 && (
           <div className="rounded-2xl border-2 border-dashed border-slate-300 p-16 text-center">
             <p className="text-3xl">🚛</p>
@@ -118,6 +131,17 @@ export default function VehicleList({ grouped, company, onSelect }) {
       <footer className="px-8 lg:px-12 py-6 text-center text-xs text-slate-400 border-t border-slate-200">
         {company?.name} • {company?.address}
       </footer>
+
+      {showScrollTop && (
+        <button
+          type="button"
+          onClick={scrollToTop}
+          className="fixed bottom-10 right-10 z-[60] h-16 w-16 rounded-full bg-primary-600 text-white text-3xl shadow-2xl shadow-primary-900/40 grid place-items-center active:scale-90 transition-all anim-scale-in border-4 border-white"
+          aria-label="Kembali ke atas"
+        >
+          ↑
+        </button>
+      )}
     </div>
   );
 }

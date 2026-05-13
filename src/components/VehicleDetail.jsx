@@ -82,7 +82,7 @@ export default function VehicleDetail({ vehicle, company, onBack }) {
 
   return (
     <div className="min-h-screen bg-slate-50 anim-fade-in">
-      <Header company={company} leading={<BackButton onClick={onBack} />} />
+      <Header company={company} />
 
       <main className="px-8 lg:px-12 py-10 grid lg:grid-cols-2 gap-10">
         <section>
@@ -198,6 +198,15 @@ export default function VehicleDetail({ vehicle, company, onBack }) {
               ))}
             </div>
           )}
+
+          <button
+            type="button"
+            onClick={onBack}
+            className="mt-10 w-full flex items-center justify-center gap-3 py-6 rounded-3xl bg-white border-2 border-slate-200 text-slate-600 font-bold text-2xl hover:bg-slate-50 active:scale-[0.98] transition shadow-md"
+          >
+            <span className="text-3xl text-primary-600">←</span>
+            Kembali
+          </button>
         </section>
 
         <section className="anim-scale-in">
