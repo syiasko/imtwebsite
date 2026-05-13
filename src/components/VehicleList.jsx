@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Header from "./Header";
+import { QRCodeCanvas } from "qrcode.react";
 
 export default function VehicleList({ grouped, company, onSelect }) {
   const [activeCat, setActiveCat] = useState("all");
@@ -15,25 +16,43 @@ export default function VehicleList({ grouped, company, onSelect }) {
     <div className="min-h-screen bg-slate-50 anim-fade-in">
       <Header company={company} />
 
-      <section className="px-8 lg:px-12 pt-10 pb-6">
-        <p className="text-sm font-semibold uppercase tracking-widest text-secondary-600">
-          Showcase
-        </p>
-        <h1 className="mt-1 text-4xl lg:text-5xl font-extrabold text-primary-900">
-          Lini Produk Karoseri
-        </h1>
-        <p className="mt-3 text-lg text-slate-600 max-w-3xl">
-          {totalUnits} unit kendaraan khusus dalam {grouped.length} kategori.
-          Sentuh kartu untuk melihat spesifikasi lengkap.
-        </p>
+      <section className="px-8 lg:px-12 pt-10 pb-6 flex flex-col md:flex-row justify-between gap-8 items-start">
+        <div className="max-w-4xl">
+          <p className="text-sm font-semibold uppercase tracking-widest text-secondary-600">
+            Showcase
+          </p>
+          <h1 className="mt-1 text-4xl lg:text-5xl font-extrabold text-primary-900">
+            Lini Produk Karoseri
+          </h1>
+          <p className="mt-3 text-lg text-slate-600">
+            {totalUnits} unit kendaraan khusus dalam {grouped.length} kategori.
+            Sentuh kartu untuk melihat spesifikasi lengkap.
+          </p>
+        </div>
 
-        {grouped.length > 1 && (
-          <div
-            // Always single-row scroll so it doesn't dominate the screen on
-            // portrait kiosks (where flex-wrap would push the grid below the
-            // fold). Negative margin lets the scroll edge hug the viewport.
-            className="mt-6 -mx-8 lg:-mx-12 px-8 lg:px-12 overflow-x-auto no-scrollbar"
-          >
+        {company?.websiteUrl && (
+          <div className="flex items-center gap-6 p-5 rounded-3xl bg-white border-2 border-slate-200 shadow-sm anim-scale-in">
+            <div className="shrink-0 p-2 bg-white rounded-xl shadow-inner border border-slate-100">
+              <QRCodeCanvas value={company.websiteUrl} size={110} level="H" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                Scan QR Code
+              </p>
+              <p className="text-xl font-extrabold text-primary-900 leading-tight mt-1">
+                Kunjungi Website
+              </p>
+              <p className="text-sm text-slate-500 mt-1 truncate max-w-[150px]">
+                {company.websiteUrl.replace(/^https?:\/\/(www\.)?/, "")}
+              </p>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {grouped.length > 1 && (
+        <section className="px-8 lg:px-12 mb-6">
+          <div className="overflow-x-auto no-scrollbar -mx-8 lg:-mx-12 px-8 lg:px-12">
             <div className="flex flex-nowrap gap-3 w-max pb-1">
               <CategoryPill
                 label="Semua"
@@ -52,8 +71,8 @@ export default function VehicleList({ grouped, company, onSelect }) {
               ))}
             </div>
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
       <main className="px-8 lg:px-12 pb-12 space-y-12">
         {visibleGroups.length === 0 && (
