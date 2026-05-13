@@ -112,42 +112,53 @@ export default function Screensaver({ grouped, onDismiss }) {
           </div>
         </div>
       ) : (
-        <div className="h-full relative flex items-center justify-center p-20 anim-fade-in">
-          <img
-            key={currentSlide}
-            src={currentSlide}
-            alt=""
-            className="max-w-full max-h-full object-contain anim-fade-in"
-          />
-          <div className="absolute inset-x-0 bottom-24 flex flex-col items-center px-10 text-center pointer-events-none">
-            <Lottie 
-              animationData={touchAnimation} 
-              className={`h-36 w-36 -mb-6 transition-all duration-1000 ${
-                theme.isLight ? "opacity-80" : "brightness-0 invert opacity-90"
-              }`}
-              loop={true}
+        <div className="flex flex-col h-full anim-fade-in">
+          {/* Top 65% - Image Section */}
+          <div className="h-[65%] relative flex items-center justify-center p-12">
+            <img
+              key={currentSlide}
+              src={currentSlide}
+              alt=""
+              className="max-w-full max-h-full object-contain anim-fade-in"
             />
-            <h2 className={`text-6xl font-black uppercase tracking-tighter anim-pulse-slow ${
-              theme.isLight ? "text-slate-900" : "text-white"
-            }`}>
-              Sentuh layar untuk melihat produk lainnya
-            </h2>
-            <div className={`mt-8 flex items-center justify-center gap-4 ${
-              theme.isLight ? "text-primary-600" : "text-secondary-400"
-            }`}>
-              <span className={`h-1 w-12 rounded-full ${theme.isLight ? "bg-primary-600" : "bg-secondary-400"}`} />
-              <p className="text-xl font-bold tracking-[0.2em] uppercase opacity-80">
-                IMT Karoseri Showcase
-              </p>
-              <span className={`h-1 w-12 rounded-full ${theme.isLight ? "bg-primary-600" : "bg-secondary-400"}`} />
+          </div>
+
+          {/* Bottom 35% - Text Section */}
+          <div 
+            className={`h-[35%] flex flex-col items-center justify-center px-12 text-center transition-colors duration-1000 ${
+              theme.isLight ? "bg-black/5 border-black/10" : "bg-white/5 border-white/10"
+            } border-t`}
+          >
+            <div className="space-y-4 anim-scale-in">
+              <Lottie 
+                animationData={touchAnimation} 
+                className={`mx-auto h-32 w-32 -mb-6 transition-all duration-1000 ${
+                  theme.isLight ? "opacity-80" : "brightness-0 invert opacity-90"
+                }`}
+                loop={true}
+              />
+              <h2 className={`text-6xl font-black uppercase tracking-tighter anim-pulse-slow ${
+                theme.isLight ? "text-slate-900" : "text-white"
+              }`}>
+                Sentuh layar untuk melihat produk lainnya
+              </h2>
+              <div className={`flex items-center justify-center gap-4 ${
+                theme.isLight ? "text-primary-600" : "text-secondary-400"
+              }`}>
+                <span className={`h-1 w-12 rounded-full ${theme.isLight ? "bg-primary-600" : "bg-secondary-400"}`} />
+                <p className="text-xl font-bold tracking-[0.2em] uppercase opacity-80">
+                  IMT Karoseri Showcase
+                </p>
+                <span className={`h-1 w-12 rounded-full ${theme.isLight ? "bg-primary-600" : "bg-secondary-400"}`} />
+              </div>
+              <img 
+                src="/logo.png" 
+                alt="IMT Logo" 
+                className={`mx-auto h-20 w-20 object-contain rounded-2xl bg-white p-2 shadow-2xl transition-opacity duration-1000 ${
+                  theme.isLight ? "opacity-90" : "opacity-80"
+                }`}
+              />
             </div>
-            <img 
-              src="/logo.png" 
-              alt="IMT Logo" 
-              className={`mt-10 h-20 w-20 object-contain rounded-2xl bg-white p-2 shadow-2xl transition-opacity duration-1000 ${
-                theme.isLight ? "opacity-90" : "opacity-80"
-              }`}
-            />
           </div>
         </div>
       )}
