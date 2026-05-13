@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import Lottie from "lottie-react";
+import touchAnimation from "../lottie/touch.json";
 
 export default function Screensaver({ grouped, onDismiss }) {
   const [activeSlide, setActiveSlide] = useState(0);
@@ -78,6 +80,13 @@ export default function Screensaver({ grouped, onDismiss }) {
             } border-t`}
           >
             <div className="space-y-6 anim-scale-in">
+              <Lottie 
+                animationData={touchAnimation} 
+                className={`mx-auto h-32 w-32 -mb-4 transition-all duration-1000 ${
+                  theme.isLight ? "opacity-80" : "brightness-0 invert opacity-90"
+                }`}
+                loop={true}
+              />
               <h2 className={`text-5xl md:text-6xl font-black uppercase tracking-tighter leading-tight anim-pulse-slow ${
                 theme.isLight ? "text-slate-900" : "text-white"
               }`}>
@@ -111,6 +120,13 @@ export default function Screensaver({ grouped, onDismiss }) {
             className="max-w-full max-h-full object-contain anim-fade-in"
           />
           <div className="absolute inset-x-0 bottom-24 flex flex-col items-center px-10 text-center pointer-events-none">
+            <Lottie 
+              animationData={touchAnimation} 
+              className={`h-36 w-36 -mb-6 transition-all duration-1000 ${
+                theme.isLight ? "opacity-80" : "brightness-0 invert opacity-90"
+              }`}
+              loop={true}
+            />
             <h2 className={`text-6xl font-black uppercase tracking-tighter anim-pulse-slow ${
               theme.isLight ? "text-slate-900" : "text-white"
             }`}>
