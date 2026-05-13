@@ -50,3 +50,11 @@
 }
 .anim-fade-in { animation: fade-in 0.35s ease-out both; }
 .anim-scale-in { animation: scale-in 0.35s ease-out both; }
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(0.98); }
+}
+.anim-pulse-slow {
+  animation: pulse-slow 4s ease-in-out infinite;
+}

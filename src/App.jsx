@@ -3,6 +3,7 @@ import { useSignageData } from "./firebase/data";
 import VehicleList from "./components/VehicleList";
 import VehicleDetail from "./components/VehicleDetail";
 import Splash from "./components/Splash";
+import Screensaver from "./components/Screensaver";
 
 // Idle ms before the detail view auto-returns to the list. 0 disables.
 const DETAIL_IDLE_TIMEOUT = 60_000;
@@ -11,6 +12,7 @@ export default function App() {
   const { grouped, vehicles, company, loading, error } = useSignageData();
   const [view, setView] = useState({ type: "list" });
   const [showSplash, setShowSplash] = useState(() => !sessionStorage.getItem("splashShown"));
+  const [showScreensaver, setShowScreensaver] = useState(false);
 
   useEffect(() => {
     if (!loading && showSplash) {
@@ -29,8 +31,7 @@ export default function App() {
     window.scrollTo({ top: 0 });
   }, []);
 
-  // Auto-return to list after idle on the detail view, so kiosk doesn't
-  // get stranded on a single product if a visitor walked away.
+  // Auto-return to list after idle on the detail view.
   useEffect(() => {
     if (view.type !== "detail" || DETAIL_IDLE_TIMEOUT <= 0) return undefined;
     let timeoutId = setTimeout(closeDetail, DETAIL_IDLE_TIMEOUT);
@@ -45,6 +46,32 @@ export default function App() {
       events.forEach((e) => window.removeEventListener(e, reset));
     };
   }, [view.type, closeDetail]);
+
+  // Global screensaver idle timer.
+  const screensaverTimeoutMs = (company?.screensaverTimeout || 3) * 60_000;
+
+  useEffect(() => {
+    if (screensaverTimeoutMs <= 0 || loading) return undefined;
+
+    let timeoutId = setTimeout(() => setShowScreensaver(true), screensaverTimeoutMs);
+
+    const reset = () => {
+      setShowScreensaver(false);
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(
+        () => setShowScreensaver(true),
+        screensaverTimeoutMs
+      );
+    };
+
+    const events = ["pointerdown", "touchstart", "keydown"];
+    events.forEach((e) => window.addEventListener(e, reset, { passive: true }));
+
+    return () => {
+      clearTimeout(timeoutId);
+      events.forEach((e) => window.removeEventListener(e, reset));
+    };
+  }, [screensaverTimeoutMs, loading]);
 
   if (loading) {
     if (showSplash) return <Splash company={company} />;
@@ -80,6 +107,14 @@ export default function App() {
   }
 
   return (
-    <VehicleList grouped={grouped} company={company} onSelect={openDetail} />
+    <>
+      <VehicleList grouped={grouped} company={company} onSelect={openDetail} />
+      {showScreensaver && (
+        <Screensaver
+          grouped={grouped}
+          onDismiss={() => setShowScreensaver(false)}
+        />
+      )}
+    </>
   );
 }

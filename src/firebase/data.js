@@ -10,6 +10,7 @@ const FALLBACK_COMPANY = {
   email: "rtnayulstr@gmail.com",
   address: "Kp. Babakan Rawahaur No. 100, Babakan Madang, Sentul, Jawa Barat 16810",
   websiteUrl: "https://www.imtindonesia.com",
+  screensaverTimeout: 3,
 };
 
 // Subscribes to the same Firestore collections imtwebsite uses, exposed as a
