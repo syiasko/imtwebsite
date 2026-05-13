@@ -92,6 +92,13 @@ export default function Screensaver({ grouped, onDismiss }) {
                 </p>
                 <span className={`h-1 w-12 rounded-full ${theme.isLight ? "bg-primary-600" : "bg-secondary-400"}`} />
               </div>
+              <img 
+                src="/logo.png" 
+                alt="IMT Logo" 
+                className={`mx-auto h-20 w-20 object-contain rounded-2xl bg-white p-2 shadow-2xl transition-opacity duration-1000 ${
+                  theme.isLight ? "opacity-90" : "opacity-80"
+                }`}
+              />
             </div>
           </div>
         </div>
@@ -109,6 +116,22 @@ export default function Screensaver({ grouped, onDismiss }) {
             }`}>
               Sentuh layar untuk melihat produk lainnya
             </h2>
+            <div className={`mt-8 flex items-center justify-center gap-4 ${
+              theme.isLight ? "text-primary-600" : "text-secondary-400"
+            }`}>
+              <span className={`h-1 w-12 rounded-full ${theme.isLight ? "bg-primary-600" : "bg-secondary-400"}`} />
+              <p className="text-xl font-bold tracking-[0.2em] uppercase opacity-80">
+                IMT Karoseri Showcase
+              </p>
+              <span className={`h-1 w-12 rounded-full ${theme.isLight ? "bg-primary-600" : "bg-secondary-400"}`} />
+            </div>
+            <img 
+              src="/logo.png" 
+              alt="IMT Logo" 
+              className={`mt-10 h-20 w-20 object-contain rounded-2xl bg-white p-2 shadow-2xl transition-opacity duration-1000 ${
+                theme.isLight ? "opacity-90" : "opacity-80"
+              }`}
+            />
           </div>
         </div>
       )}
