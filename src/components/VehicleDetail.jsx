@@ -286,7 +286,15 @@ export default function VehicleDetail({ vehicle, company, onBack }) {
                 <div className="flex items-center gap-6 p-5 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-sm">
                   <div className="shrink-0 p-2 bg-white rounded-lg shadow-inner">
                     <QRCodeCanvas
-                      value={`https://wa.me/${(company?.whatsapp || "").replace(/\D/g, "")}`}
+                      value={`https://wa.me/${(company?.whatsapp || "").replace(/\D/g, "")}?text=${encodeURIComponent(
+                        `Halo ${company?.shortName || "IMT Karoseri"}, saya tertarik dengan unit *${vehicle.name}*.\n\nLink Produk: ${
+                          company?.websiteUrl || "https://www.imtindonesia.com"
+                        }/produk/${vehicle.name
+                          .toLowerCase()
+                          .replace(/[^a-z0-9\s-]/g, "")
+                          .replace(/\s+/g, "-")
+                          .replace(/-+/g, "-")}`
+                      )}`}
                       size={90}
                       level="M"
                     />
@@ -303,7 +311,7 @@ export default function VehicleDetail({ vehicle, company, onBack }) {
                       value={
                         company?.catalogPdfUrl && company.catalogPdfUrl.startsWith("http")
                           ? company.catalogPdfUrl
-                          : "https://imtindonesia.com/catalog"
+                          : "https://www.imtindonesia.com/catalog"
                       }
                       size={90}
                       level="M"
