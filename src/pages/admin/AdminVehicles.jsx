@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import { useData } from "../../context/DataContext";
 import { useToast } from "../../context/ToastContext";
 import { compressImage, formatBytes } from "../../utils/imageCompression";
@@ -22,6 +22,8 @@ export default function AdminVehicles() {
   const toast = useToast();
   const [draft, setDraft] = useState(emptyDraft);
   const [filterCat, setFilterCat] = useState("");
+  const tableRef = useRef(null);
+  const formRef = useRef(null);
 
   const editing = !!draft.id;
   const categoryById = useMemo(
@@ -35,19 +37,31 @@ export default function AdminVehicles() {
     [vehicles, filterCat]
   );
 
-  const startEdit = (v) =>
+  const startEdit = (v) => {
     setDraft({
       ...v,
       images: [...(v.images || [])],
       specs: { ...(v.specs || {}) },
       features: [...(v.features || [])],
     });
+    setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+  };
 
-  const startNew = () =>
+  const startNew = () => {
     setDraft({
       ...emptyDraft,
       categoryId: categories[0]?.id || "",
     });
+    setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+  };
+
+  const cancelEdit = () => {
+    setDraft({
+      ...emptyDraft,
+      categoryId: categories[0]?.id || "",
+    });
+    setTimeout(() => tableRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+  };
 
   const onSave = async (formDraft) => {
     if (!formDraft.name.trim() || !formDraft.categoryId) {
@@ -60,6 +74,7 @@ export default function AdminVehicles() {
       specs: { ...(saved.specs || {}) },
       features: [...(saved.features || [])],
     });
+    setTimeout(() => tableRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     return saved;
   };
 
@@ -72,7 +87,10 @@ export default function AdminVehicles() {
 
   return (
     <div className="grid xl:grid-cols-5 gap-8">
-      <div className="xl:col-span-3 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+      <div
+        ref={tableRef}
+        className="xl:col-span-3 bg-white rounded-2xl border border-slate-200 overflow-hidden"
+      >
         <div className="px-5 py-4 border-b border-slate-200 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
           <h2 className="font-semibold text-slate-900">Daftar Kendaraan</h2>
           <div className="flex items-center gap-2">
@@ -155,7 +173,8 @@ export default function AdminVehicles() {
         categories={categories}
         editing={editing}
         onSave={onSave}
-        onCancel={startNew}
+        onCancel={cancelEdit}
+        formRef={formRef}
       />
     </div>
   );
@@ -168,6 +187,7 @@ function VehicleForm({
   editing,
   onSave,
   onCancel,
+  formRef,
 }) {
   const toast = useToast();
   const [specKey, setSpecKey] = useState("");
@@ -320,6 +340,7 @@ function VehicleForm({
 
   return (
     <form
+      ref={formRef}
       onSubmit={onSubmit}
       className="xl:col-span-2 bg-white rounded-2xl border border-slate-200 p-5 space-y-5 h-fit"
     >
