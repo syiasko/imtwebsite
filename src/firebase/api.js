@@ -79,6 +79,21 @@ export const saveCompany = (company) =>
     merge: true,
   });
 
+// --- Greeting settings ---------------------------------------------------
+const GREETING_DOC = "greeting";
+
+export const subscribeGreeting = (cb, onError) =>
+  onSnapshot(
+    doc(db, SETTINGS, GREETING_DOC),
+    (snap) => cb(snap.exists() ? snap.data() : null),
+    (err) => onError?.(err)
+  );
+
+export const saveGreeting = (greeting) =>
+  setDoc(doc(db, SETTINGS, GREETING_DOC), stripUndefined(greeting), {
+    merge: true,
+  });
+
 // --- Users ---------------------------------------------------------------
 export const subscribeUsers = (cb, onError) =>
   onSnapshot(

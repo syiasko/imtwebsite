@@ -21,12 +21,14 @@ import {
   deleteVehicleDoc,
   saveCategory,
   saveCompany,
+  saveGreeting,
   saveUser,
   saveVehicle,
   seedIfEmpty,
   subscribeCategories,
   subscribeCompany,
   subscribeContactMessages,
+  subscribeGreeting,
   subscribeUsers,
   subscribeVehicles,
   updateContactMessageStatus,
@@ -43,6 +45,14 @@ export function DataProvider({ children }) {
   const [users, setUsers] = useState([]);
   const [messages, setMessages] = useState([]);
   const [company, setCompany] = useState(initialCompanySettings);
+  const [greeting, setGreeting] = useState({
+    isActive: true,
+    text: "Selamat Datang di IMT Karoseri — Mitra Terpercaya Kendaraan Khusus Indonesia",
+    guestGender: "Bapak/Ibu",
+    guestName: "",
+    guestTitle: "",
+    guestCompany: "",
+  });
   const [loading, setLoading] = useState(true);
   const [authStatus, setAuthStatus] = useState("idle"); // idle | ok | error
   const [authError, setAuthError] = useState(null);
@@ -53,6 +63,7 @@ export function DataProvider({ children }) {
     let unsubCats = () => {};
     let unsubVeh = () => {};
     let unsubCompany = () => {};
+    let unsubGreeting = () => {};
     let unsubUsers = () => {};
     let unsubMessages = () => {};
     let cancelled = false;
@@ -97,6 +108,11 @@ export function DataProvider({ children }) {
       );
       unsubVeh = subscribeVehicles((rows) => setVehicles(rows), onSubError);
       unsubUsers = subscribeUsers((rows) => setUsers(rows), onSubError);
+      unsubGreeting = subscribeGreeting((data) => {
+        if (data) {
+          setGreeting((prev) => ({ ...prev, ...data }));
+        }
+      }, onSubError);
       unsubMessages = subscribeContactMessages(
         (rows) => setMessages(rows),
         // Don't surface errors here — anonymous visitors can hit a permission
@@ -134,6 +150,7 @@ export function DataProvider({ children }) {
       unsubCats();
       unsubVeh();
       unsubCompany();
+      unsubGreeting();
       unsubUsers();
       unsubMessages();
     };
@@ -182,6 +199,12 @@ export function DataProvider({ children }) {
   const updateCompany = useCallback(
     (patch) => saveCompany({ ...company, ...patch }),
     [company]
+  );
+
+  // --- Greeting
+  const updateGreeting = useCallback(
+    (patch) => saveGreeting({ ...greeting, ...patch }),
+    [greeting]
   );
 
   // --- Users
@@ -235,6 +258,7 @@ export function DataProvider({ children }) {
       users,
       messages,
       company,
+      greeting,
       loading,
       authStatus,
       authError,
@@ -244,6 +268,7 @@ export function DataProvider({ children }) {
       upsertVehicle,
       deleteVehicle,
       updateCompany,
+      updateGreeting,
       upsertUser,
       deleteUser,
       setMessageStatus,
@@ -256,6 +281,7 @@ export function DataProvider({ children }) {
       users,
       messages,
       company,
+      greeting,
       loading,
       authStatus,
       authError,
@@ -265,6 +291,7 @@ export function DataProvider({ children }) {
       upsertVehicle,
       deleteVehicle,
       updateCompany,
+      updateGreeting,
       upsertUser,
       deleteUser,
       setMessageStatus,

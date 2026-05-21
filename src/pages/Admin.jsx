@@ -271,6 +271,11 @@ export default function Admin() {
           </NavLink>
         )}
         {isAdmin && (
+          <NavLink to={`${ADMIN_BASE_PATH}/greeting`} className={tabClass}>
+            Greeting
+          </NavLink>
+        )}
+        {isAdmin && (
           <NavLink to={`${ADMIN_BASE_PATH}/pengaturan`} className={tabClass}>
             Company Setting
           </NavLink>
@@ -283,14 +288,35 @@ export default function Admin() {
 }
 
 function Overview() {
-  const { categories, vehicles, users } = useData();
+  const { categories, vehicles, users, greeting } = useData();
   const isAdmin = isCurrentAdmin();
   return (
-    <div className={`grid gap-6 ${isAdmin ? "md:grid-cols-4" : "md:grid-cols-3"}`}>
+    <div className={`grid gap-6 ${isAdmin ? "md:grid-cols-4 lg:grid-cols-5" : "md:grid-cols-3"}`}>
       <StatCard label="Total Kategori" value={categories.length} />
       <StatCard label="Total Kendaraan" value={vehicles.length} />
       {isAdmin && (
         <StatCard label="Total Pengguna" value={users.length} />
+      )}
+      {isAdmin && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 flex flex-col justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Status Greeting Live
+            </p>
+            <div className="mt-2 flex items-center gap-2">
+              <span className={`h-3 w-3 rounded-full ${greeting?.isActive ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
+              <p className="text-2xl font-bold text-slate-900">
+                {greeting?.isActive ? "Aktif" : "Nonaktif"}
+              </p>
+            </div>
+          </div>
+          <Link
+            to={`${ADMIN_BASE_PATH}/greeting`}
+            className="mt-2 text-xs font-semibold text-primary-600 hover:underline"
+          >
+            Kelola Greeting →
+          </Link>
+        </div>
       )}
       <StatCard
         label="Rata-rata Unit / Kategori"
@@ -300,7 +326,7 @@ function Overview() {
             : (vehicles.length / categories.length).toFixed(1)
         }
       />
-      <div className={`bg-white rounded-2xl border border-slate-200 p-6 ${isAdmin ? "md:col-span-4" : "md:col-span-3"}`}>
+      <div className={`bg-white rounded-2xl border border-slate-200 p-6 ${isAdmin ? "md:col-span-4 lg:col-span-5" : "md:col-span-3"}`}>
         <h2 className="font-semibold text-slate-900">Sebaran per Kategori</h2>
         <ul className="mt-4 space-y-3">
           {categories.map((c) => {
