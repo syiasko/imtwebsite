@@ -6,7 +6,6 @@ import { timingSafeEqual } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { SERVER_INFO, SERVER_INSTRUCTIONS, registerTools } from "../mcp/tools.mjs";
-import { adminDb, adminStore } from "../mcp/store-admin.mjs";
 import { hashSecret, parseToken } from "../src/utils/aiToken.js";
 
 // lastUsedAt is rewritten at most this often, to spare Firestore writes.
@@ -25,8 +24,24 @@ const unauthorized = (res, message) =>
 const sameHash = (a, b) =>
   a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 
+// The Admin SDK needs FIREBASE_SERVICE_ACCOUNT; load it lazily so a missing
+// key answers with a clear 503 instead of crashing the function.
+let adminPromise = null;
+const loadAdmin = () => {
+  if (!adminPromise) {
+    if (!process.env.FIREBASE_SERVICE_ACCOUNT && !process.env.FIRESTORE_EMULATOR_HOST) {
+      return Promise.reject(new Error("FIREBASE_SERVICE_ACCOUNT belum di-set di Vercel."));
+    }
+    adminPromise = import("../mcp/store-admin.mjs").catch((err) => {
+      adminPromise = null;
+      throw err;
+    });
+  }
+  return adminPromise;
+};
+
 // Returns { tokenRef, token, user } or null.
-const authenticate = async (header) => {
+const authenticate = async (adminDb, header) => {
   const parsed = parseToken(/^Bearer\s+(.+)$/i.exec(header || "")?.[1]?.trim());
   if (!parsed) return null;
   const tokenRef = adminDb.collection("ai_tokens").doc(parsed.id);
@@ -56,12 +71,14 @@ export default async function handler(req, res) {
     return jsonRpcError(res, 405, "Method not allowed", { Allow: "POST" });
   }
 
-  let auth;
+  let auth, adminStore;
   try {
-    auth = await authenticate(req.headers.authorization);
+    const admin = await loadAdmin();
+    adminStore = admin.adminStore;
+    auth = await authenticate(admin.adminDb, req.headers.authorization);
   } catch (err) {
     console.error("MCP auth lookup failed:", err);
-    return jsonRpcError(res, 503, "Server belum siap. Coba lagi sebentar.");
+    return jsonRpcError(res, 503, `Server MCP belum siap: ${err.message}`);
   }
   if (!auth) return unauthorized(res, "Token tidak valid. Buat token baru di panel admin, menu Akses AI.");
   if (auth.expired) return unauthorized(res, "Token sudah kedaluwarsa. Buat token baru di menu Akses AI.");
