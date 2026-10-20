@@ -15,6 +15,7 @@ import AdminUsers from "./pages/admin/AdminUsers";
 import AdminMessages from "./pages/admin/AdminMessages";
 import AdminGreeting from "./pages/admin/AdminGreeting";
 import AdminAccount from "./pages/admin/AdminAccount";
+import AdminAiAccess from "./pages/admin/AdminAiAccess";
 import ToastViewport from "./components/Toast";
 import { trackPageView } from "./firebase/config";
 import { useT } from "./context/LanguageContext";
@@ -62,6 +63,7 @@ export default function App() {
             <Route path="pengaturan" element={<AdminSettings />} />
             <Route path="pengguna" element={<AdminUsers />} />
             <Route path="akun" element={<AdminAccount />} />
+            <Route path="akses-ai" element={<AdminAiAccess />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

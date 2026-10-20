@@ -10,6 +10,7 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
   writeBatch,
 } from "firebase/firestore";
 import { initializeApp } from "firebase/app";
@@ -190,3 +191,21 @@ export const updateContactMessageStatus = (id, status) =>
 
 export const deleteContactMessage = (id) =>
   deleteDoc(doc(db, CONTACT_MESSAGES, id));
+
+// --- AI access tokens (hosted MCP endpoint) ------------------------------
+const AI_TOKENS = "ai_tokens";
+
+// Admins see every token; other staff only their own (the rules require the
+// uid filter for them).
+export const subscribeAiTokens = (uid, cb, onError) =>
+  onSnapshot(
+    uid
+      ? query(collection(db, AI_TOKENS), where("uid", "==", uid))
+      : collection(db, AI_TOKENS),
+    (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (err) => onError?.(err)
+  );
+
+export const createAiTokenDoc = (id, data) => setDoc(doc(db, AI_TOKENS, id), data);
+
+export const deleteAiTokenDoc = (id) => deleteDoc(doc(db, AI_TOKENS, id));

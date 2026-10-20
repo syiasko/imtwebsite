@@ -24,9 +24,11 @@ Single-page React app untuk showcase **PT. INDRAPRASTA MULIA TEKNIK** (IMT Karos
 > password, reset di Firebase Console → Authentication → Users.
 
 ### Kelola lewat AI agent (MCP)
-`mcp/server.mjs` membuka fitur panel admin sebagai tools MCP, supaya admin bisa
-mengubah konten lewat chat di Claude Code atau Codex. Login memakai akun panel
-yang sama, dan role-nya tetap berlaku. Lihat [`mcp/README.md`](mcp/README.md).
+Fitur panel admin juga tersedia sebagai tools MCP, supaya admin bisa mengubah
+konten lewat chat di Claude Code, Codex, atau agent lain. Tab **Akses AI** di
+panel membuat token untuk endpoint `/api/mcp` dan menampilkan sesi agent yang
+aktif. Login memakai akun panel yang sama, dan role-nya tetap berlaku. Lihat
+[`mcp/README.md`](mcp/README.md).
 
 ## Stack
 

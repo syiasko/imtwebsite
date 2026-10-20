@@ -231,6 +231,9 @@ export default function Admin() {
             Company Setting
           </NavLink>
         )}
+        <NavLink to={`${ADMIN_BASE_PATH}/akses-ai`} className={tabClass}>
+          Akses AI
+        </NavLink>
       </div>
 
       <div className="mt-8">{isOverview ? <Overview /> : <Outlet />}</div>
