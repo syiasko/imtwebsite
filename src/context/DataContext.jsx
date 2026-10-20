@@ -102,16 +102,31 @@ export function DataProvider({ children }) {
         setLoading(false);
       };
 
-      unsubCats = subscribeCategories(
-        (rows) => setCategories(rows),
-        onSubError
-      );
-      unsubVeh = subscribeVehicles((rows) => setVehicles(rows), onSubError);
-      unsubUsers = subscribeUsers((rows) => setUsers(rows), onSubError);
+      // Stay in the loading state until every collection the UI reads has
+      // delivered its first snapshot; otherwise screens briefly show empty
+      // lists, default greeting status, or the wrong login form.
+      const pending = new Set(["categories", "vehicles", "users", "greeting", "company"]);
+      const markReady = (key) => {
+        if (pending.delete(key) && pending.size === 0) setLoading(false);
+      };
+
+      unsubCats = subscribeCategories((rows) => {
+        setCategories(rows);
+        markReady("categories");
+      }, onSubError);
+      unsubVeh = subscribeVehicles((rows) => {
+        setVehicles(rows);
+        markReady("vehicles");
+      }, onSubError);
+      unsubUsers = subscribeUsers((rows) => {
+        setUsers(rows);
+        markReady("users");
+      }, onSubError);
       unsubGreeting = subscribeGreeting((data) => {
         if (data) {
           setGreeting((prev) => ({ ...prev, ...data }));
         }
+        markReady("greeting");
       }, onSubError);
       unsubMessages = subscribeContactMessages(
         (rows) => setMessages(rows),
@@ -140,7 +155,7 @@ export function DataProvider({ children }) {
           }
           return merged;
         });
-        setLoading(false);
+        markReady("company");
         setFirestoreError(null);
       }, onSubError);
     })();

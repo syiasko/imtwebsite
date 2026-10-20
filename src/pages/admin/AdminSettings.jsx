@@ -1,12 +1,11 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useId, useState } from "react";
 import { useData } from "../../context/DataContext";
 import {
   DEFAULT_ADMIN_PASSWORD,
   sha256Hex,
   verifyAdminPassword,
 } from "../../firebase/password";
-import { ADMIN_BASE_PATH, isCurrentAdmin } from "../Admin";
+import { AccessDenied, isCurrentAdmin } from "../Admin";
 import {
   DEFAULT_MAPS_PLACE_QUERY,
   buildMapsEmbedUrl,
@@ -15,23 +14,11 @@ import {
 export default function AdminSettings() {
   if (!isCurrentAdmin()) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center">
-        <p className="text-4xl">🔒</p>
-        <h2 className="mt-3 text-xl font-bold text-slate-900">
-          Akses dibatasi
-        </h2>
-        <p className="mt-2 text-sm text-slate-600 max-w-md mx-auto">
-          Hanya pengguna dengan role <strong>Admin</strong> yang dapat
-          mengubah Company Setting (identitas, kontak, YouTube, Maps,
-          katalog PDF, password). Hubungi administrator untuk perubahan.
-        </p>
-        <Link
-          to={ADMIN_BASE_PATH}
-          className="mt-6 inline-block px-5 py-2.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-semibold"
-        >
-          Kembali ke Ringkasan
-        </Link>
-      </div>
+      <AccessDenied>
+        Hanya pengguna dengan role <strong>Admin</strong> yang dapat mengubah
+        Company Setting (identitas, kontak, YouTube, Maps, katalog PDF,
+        password). Hubungi administrator untuk perubahan.
+      </AccessDenied>
     );
   }
   return <AdminSettingsInner />;
@@ -42,6 +29,8 @@ function AdminSettingsInner() {
   const [draft, setDraft] = useState(company);
   const [savingMsg, setSavingMsg] = useState("");
   const [savingErr, setSavingErr] = useState("");
+  const addressId = useId();
+  const embedId = useId();
 
   useEffect(() => {
     setDraft(company);
@@ -122,7 +111,7 @@ function AdminSettingsInner() {
       >
         <div>
           <h2 className="text-lg font-bold text-slate-900">Identitas Perusahaan</h2>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-600">
             Ditampilkan di seluruh website (footer, kontak, katalog).
           </p>
         </div>
@@ -169,10 +158,11 @@ function AdminSettingsInner() {
             onChange={(v) => update("hours", v)}
           />
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label htmlFor={addressId} className="block text-sm font-medium text-slate-700 mb-1">
               Alamat
             </label>
             <textarea
+              id={addressId}
               rows="3"
               value={draft.address}
               onChange={(e) => update("address", e.target.value)}
@@ -185,7 +175,7 @@ function AdminSettingsInner() {
 
         <div>
           <h2 className="text-lg font-bold text-slate-900">YouTube Section</h2>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-600">
             URL video / playlist / channel. Section akan otomatis menampilkan
             embed yang sesuai.
           </p>
@@ -214,12 +204,13 @@ function AdminSettingsInner() {
 
         <div>
           <h2 className="text-lg font-bold text-slate-900">Google Maps</h2>
-          <p className="text-sm text-slate-500">
-            Pin di footer dibuat dari "Maps Place Query" — gunakan nama
+          <p className="text-sm text-slate-600">
+            Pin di footer dibuat dari "Maps Place Query". Gunakan nama
             tempat yang sudah terdaftar di Google Maps (mis.{" "}
             <code>{DEFAULT_MAPS_PLACE_QUERY}</code>) supaya marker tampil
             dengan label yang benar. Kalau perlu kontrol penuh, paste
-            <code> src</code> embed dari Google Maps → Share → Embed a map.
+            <code> src</code> embed dari Google Maps (menu Share, lalu Embed a
+            map).
           </p>
         </div>
         <div className="grid md:grid-cols-2 gap-4">
@@ -238,7 +229,7 @@ function AdminSettingsInner() {
           />
           <div className="md:col-span-2">
             <div className="flex items-baseline justify-between mb-1">
-              <label className="block text-sm font-medium text-slate-700">
+              <label htmlFor={embedId} className="block text-sm font-medium text-slate-700">
                 Maps Embed URL (iframe src)
               </label>
               <button
@@ -250,12 +241,13 @@ function AdminSettingsInner() {
               </button>
             </div>
             <input
+              id={embedId}
               type="text"
               value={draft.mapsEmbedUrl || ""}
               onChange={(e) => update("mapsEmbedUrl", e.target.value)}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600"
             />
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-slate-600">
               Kosongkan untuk auto-rebuild dari Place Query saat disimpan.
             </p>
           </div>
@@ -265,7 +257,7 @@ function AdminSettingsInner() {
 
         <div>
           <h2 className="text-lg font-bold text-slate-900">Katalog PDF</h2>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-600">
             Upload PDF (maks 800KB) atau paste URL eksternal. Tombol "Download
             Katalog" di halaman publik akan memakai file ini.
           </p>
@@ -275,7 +267,7 @@ function AdminSettingsInner() {
             <div className="flex items-center justify-between bg-slate-50 rounded-lg px-4 py-3 border border-slate-200">
               <div className="text-sm">
                 <p className="font-medium text-slate-900">
-                  📄 {draft.catalogPdfName || "Katalog tersimpan"}
+                  {draft.catalogPdfName || "Katalog tersimpan"}
                 </p>
                 <a
                   href={draft.catalogPdfUrl}
@@ -289,30 +281,32 @@ function AdminSettingsInner() {
               <button
                 type="button"
                 onClick={removeCatalog}
-                className="text-sm text-slate-500 hover:text-primary-700"
+                className="text-sm text-slate-600 hover:text-red-700"
               >
                 Hapus
               </button>
             </div>
           ) : (
-            <p className="text-sm text-slate-500 italic">
-              Belum ada PDF. User akan diarahkan ke katalog cetak (print) sebagai
-              fallback.
+            <p className="text-sm text-slate-600">
+              Belum ada PDF. Pengunjung akan diarahkan ke halaman katalog cetak
+              sebagai gantinya.
             </p>
           )}
           <div className="flex flex-wrap gap-3 items-center">
-            <label className="cursor-pointer text-sm font-medium px-4 py-2 rounded-lg border border-slate-300 hover:bg-slate-50">
+            {/* sr-only (not display:none) keeps the file input reachable by Tab */}
+            <label className="cursor-pointer text-sm font-medium px-4 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 focus-within:ring-2 focus-within:ring-primary-600">
               Upload PDF
               <input
                 type="file"
                 accept="application/pdf"
                 onChange={onUploadCatalog}
-                className="hidden"
+                className="sr-only"
               />
             </label>
-            <span className="text-slate-400 text-sm">atau</span>
+            <span className="text-slate-600 text-sm">atau</span>
             <input
               type="url"
+              aria-label="URL PDF eksternal"
               placeholder="URL PDF eksternal"
               value={
                 draft.catalogPdfUrl?.startsWith("data:") ? "" : draft.catalogPdfUrl
@@ -342,10 +336,10 @@ function AdminSettingsInner() {
             Simpan Pengaturan
           </button>
           {savingMsg && (
-            <span className="text-sm text-emerald-700">{savingMsg}</span>
+            <span role="status" className="text-sm text-emerald-800">{savingMsg}</span>
           )}
           {savingErr && (
-            <span className="text-sm text-primary-700">{savingErr}</span>
+            <span role="alert" className="text-sm text-red-700">{savingErr}</span>
           )}
         </div>
       </form>
@@ -408,8 +402,8 @@ function ChangePasswordCard() {
         {usingDefault && (
           <p className="text-xs text-secondary-700 bg-secondary-50 border border-secondary-200 rounded px-3 py-2 mt-2">
             Saat ini masih memakai password default
-            <code className="font-mono mx-1">{DEFAULT_ADMIN_PASSWORD}</code>—
-            sangat disarankan menggantinya.
+            <code className="font-mono mx-1">{DEFAULT_ADMIN_PASSWORD}</code>.
+            Segera ganti password ini.
           </p>
         )}
       </div>
@@ -442,8 +436,8 @@ function ChangePasswordCard() {
         >
           {busy ? "Menyimpan..." : "Ubah Password"}
         </button>
-        {msg && <span className="text-sm text-emerald-700">{msg}</span>}
-        {err && <span className="text-sm text-primary-700">{err}</span>}
+        {msg && <span role="status" className="text-sm text-emerald-800">{msg}</span>}
+        {err && <span role="alert" className="text-sm text-red-700">{err}</span>}
       </div>
     </form>
   );
@@ -458,20 +452,22 @@ function Field({
   hint,
   className = "",
 }) {
+  const id = useId();
   return (
     <div className={className}>
-      <label className="block text-sm font-medium text-slate-700 mb-1">
+      <label htmlFor={id} className="block text-sm font-medium text-slate-700 mb-1">
         {label}
         {required && <span className="text-primary-600"> *</span>}
       </label>
       <input
+        id={id}
         type={type}
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
         required={required}
         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600"
       />
-      {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
+      {hint && <p className="mt-1 text-xs text-slate-600">{hint}</p>}
     </div>
   );
 }

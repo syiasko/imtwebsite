@@ -1,89 +1,116 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useData } from "../../context/DataContext";
+import { useToast } from "../../context/ToastContext";
+import { ConfirmDialog } from "../../components/Modal";
 
 const empty = { id: "", name: "", slug: "", description: "" };
 
 export default function AdminCategories() {
   const { categories, vehicles, upsertCategory, deleteCategory } = useData();
+  const toast = useToast();
   const [draft, setDraft] = useState(empty);
+  const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(null);
   const editing = !!draft.id;
+  const descId = useId();
 
-  const onSubmit = (e) => {
+  const unitCount = (c) => vehicles.filter((v) => v.categoryId === c.id).length;
+
+  const onSubmit = async (e) => {
     e.preventDefault();
     if (!draft.name.trim()) return;
-    upsertCategory(draft);
-    setDraft(empty);
+    setSaving(true);
+    try {
+      await upsertCategory(draft);
+      toast.success(
+        editing ? "Kategori diperbarui." : `Kategori "${draft.name}" ditambahkan.`
+      );
+      setDraft(empty);
+    } catch (err) {
+      toast.error("Gagal menyimpan kategori: " + (err?.message || ""));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const startEdit = (c) => setDraft({ ...c });
   const cancel = () => setDraft(empty);
 
-  const onDelete = (c) => {
-    const used = vehicles.filter((v) => v.categoryId === c.id).length;
-    const msg = used
-      ? `Kategori "${c.name}" memiliki ${used} unit. Hapus kategori dan SEMUA unit di dalamnya?`
-      : `Hapus kategori "${c.name}"?`;
-    if (window.confirm(msg)) deleteCategory(c.id);
+  const onDeleteConfirm = async () => {
+    const c = confirmDelete;
+    setConfirmDelete(null);
+    if (!c) return;
+    try {
+      await deleteCategory(c.id);
+      if (draft.id === c.id) cancel();
+      toast.info(`Kategori "${c.name}" dihapus.`);
+    } catch (err) {
+      toast.error("Gagal menghapus kategori: " + (err?.message || ""));
+    }
   };
+
+  const used = confirmDelete ? unitCount(confirmDelete) : 0;
 
   return (
     <div className="grid lg:grid-cols-3 gap-8">
-      <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+      <div className="lg:col-span-2 min-w-0 bg-white rounded-2xl border border-slate-200 overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
           <h2 className="font-semibold text-slate-900">Daftar Kategori</h2>
-          <span className="text-sm text-slate-500">
+          <span className="text-sm text-slate-600">
             {categories.length} kategori
           </span>
         </div>
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-slate-600">
-            <tr>
-              <th className="text-left px-5 py-3">Nama</th>
-              <th className="text-left px-5 py-3">Slug</th>
-              <th className="text-left px-5 py-3">Unit</th>
-              <th className="px-5 py-3"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-200">
-            {categories.map((c) => (
-              <tr key={c.id} className="hover:bg-slate-50">
-                <td className="px-5 py-3">
-                  <p className="font-medium text-slate-900">{c.name}</p>
-                  <p className="text-xs text-slate-500 line-clamp-1">
-                    {c.description}
-                  </p>
-                </td>
-                <td className="px-5 py-3 font-mono text-xs text-slate-600">
-                  {c.slug}
-                </td>
-                <td className="px-5 py-3 text-slate-700">
-                  {vehicles.filter((v) => v.categoryId === c.id).length}
-                </td>
-                <td className="px-5 py-3 text-right">
-                  <button
-                    onClick={() => startEdit(c)}
-                    className="text-sm font-medium text-brand-700 hover:underline mr-3"
-                  >
-                    Ubah
-                  </button>
-                  <button
-                    onClick={() => onDelete(c)}
-                    className="text-sm font-medium text-slate-500 hover:text-brand-700"
-                  >
-                    Hapus
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {categories.length === 0 && (
+        <div className="relative overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-slate-600">
               <tr>
-                <td colSpan={4} className="px-5 py-10 text-center text-slate-500">
-                  Belum ada kategori. Tambahkan di panel kanan.
-                </td>
+                <th className="text-left px-5 py-3">Nama</th>
+                <th className="text-left px-5 py-3">Slug</th>
+                <th className="text-left px-5 py-3">Unit</th>
+                <th className="px-5 py-3">
+                  <span className="sr-only">Aksi</span>
+                </th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {categories.map((c) => (
+                <tr key={c.id} className="hover:bg-slate-50">
+                  <td className="px-5 py-3">
+                    <p className="font-medium text-slate-900">{c.name}</p>
+                    <p className="text-xs text-slate-600 line-clamp-1">
+                      {c.description}
+                    </p>
+                  </td>
+                  <td className="px-5 py-3 font-mono text-xs text-slate-600">
+                    {c.slug}
+                  </td>
+                  <td className="px-5 py-3 text-slate-700">{unitCount(c)}</td>
+                  <td className="px-5 py-3 text-right whitespace-nowrap">
+                    <button
+                      onClick={() => startEdit(c)}
+                      className="text-sm font-medium text-brand-700 hover:underline mr-3"
+                    >
+                      Ubah
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete(c)}
+                      className="text-sm font-medium text-slate-600 hover:text-red-700"
+                    >
+                      Hapus
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {categories.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-5 py-10 text-center text-slate-600">
+                    Belum ada kategori. Tambahkan lewat form Tambah Kategori.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <form
@@ -107,10 +134,11 @@ export default function AdminCategories() {
           hint="Otomatis digenerate dari nama jika kosong"
         />
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
+          <label htmlFor={descId} className="block text-sm font-medium text-slate-700 mb-1">
             Deskripsi
           </label>
           <textarea
+            id={descId}
             rows="3"
             value={draft.description}
             onChange={(e) =>
@@ -123,9 +151,10 @@ export default function AdminCategories() {
         <div className="flex gap-2">
           <button
             type="submit"
-            className="flex-1 px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold"
+            disabled={saving}
+            className="flex-1 px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold disabled:opacity-60"
           >
-            {editing ? "Simpan Perubahan" : "Tambah"}
+            {saving ? "Menyimpan..." : editing ? "Simpan Perubahan" : "Tambah"}
           </button>
           {editing && (
             <button
@@ -138,25 +167,44 @@ export default function AdminCategories() {
           )}
         </div>
       </form>
+
+      <ConfirmDialog
+        open={!!confirmDelete}
+        tone="danger"
+        title="Hapus Kategori?"
+        description={
+          confirmDelete
+            ? used
+              ? `Kategori "${confirmDelete.name}" berisi ${used} unit. Kategori dan semua unit di dalamnya akan dihapus permanen.`
+              : `Kategori "${confirmDelete.name}" akan dihapus permanen.`
+            : ""
+        }
+        confirmLabel={used ? `Hapus kategori & ${used} unit` : "Hapus"}
+        cancelLabel="Batal"
+        onConfirm={onDeleteConfirm}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }
 
 function Field({ label, value, onChange, required, hint }) {
+  const id = useId();
   return (
     <div>
-      <label className="block text-sm font-medium text-slate-700 mb-1">
+      <label htmlFor={id} className="block text-sm font-medium text-slate-700 mb-1">
         {label}
         {required && <span className="text-brand-600"> *</span>}
       </label>
       <input
+        id={id}
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required={required}
         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600 focus:border-brand-600"
       />
-      {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
+      {hint && <p className="mt-1 text-xs text-slate-600">{hint}</p>}
     </div>
   );
 }

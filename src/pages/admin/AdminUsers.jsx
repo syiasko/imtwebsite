@@ -1,8 +1,7 @@
-import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useId, useMemo, useState } from "react";
 import { useData } from "../../context/DataContext";
 import { ConfirmDialog } from "../../components/Modal";
-import { ADMIN_BASE_PATH, isCurrentAdmin } from "../Admin";
+import { AccessDenied, isCurrentAdmin } from "../Admin";
 
 const emptyDraft = {
   id: "",
@@ -15,22 +14,10 @@ const emptyDraft = {
 export default function AdminUsers() {
   if (!isCurrentAdmin()) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center">
-        <p className="text-4xl">🔒</p>
-        <h2 className="mt-3 text-xl font-bold text-slate-900">
-          Akses dibatasi
-        </h2>
-        <p className="mt-2 text-sm text-slate-600 max-w-md mx-auto">
-          Hanya pengguna dengan role <strong>Admin</strong> yang dapat
-          mengelola pengguna. Hubungi administrator untuk perubahan akun.
-        </p>
-        <Link
-          to={ADMIN_BASE_PATH}
-          className="mt-6 inline-block px-5 py-2.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-semibold"
-        >
-          Kembali ke Ringkasan
-        </Link>
-      </div>
+      <AccessDenied>
+        Hanya pengguna dengan role <strong>Admin</strong> yang dapat
+        mengelola pengguna. Hubungi administrator untuk perubahan akun.
+      </AccessDenied>
     );
   }
   return <AdminUsersInner />;
@@ -42,6 +29,7 @@ function AdminUsersInner() {
   const [error, setError] = useState("");
   const [savingMsg, setSavingMsg] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const roleId = useId();
 
   const editing = !!draft.id;
   const currentUserId =
@@ -112,26 +100,29 @@ function AdminUsersInner() {
 
   return (
     <div className="grid lg:grid-cols-3 gap-8">
-      <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+      <div className="lg:col-span-2 min-w-0 bg-white rounded-2xl border border-slate-200 overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
           <div>
             <h2 className="font-semibold text-slate-900">Daftar Pengguna</h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-600 mt-0.5">
               User yang dapat login & mengelola konten admin panel.
             </p>
           </div>
-          <span className="text-sm text-slate-500">
+          <span className="text-sm text-slate-600">
             {users.length} pengguna
           </span>
         </div>
 
+        <div className="relative overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-slate-600">
             <tr>
               <th className="text-left px-5 py-3">Username</th>
               <th className="text-left px-5 py-3">Nama</th>
               <th className="text-left px-5 py-3">Role</th>
-              <th className="px-5 py-3"></th>
+              <th className="px-5 py-3">
+                <span className="sr-only">Aksi</span>
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200">
@@ -142,18 +133,20 @@ function AdminUsersInner() {
                     {u.username}
                   </p>
                   {u.id === currentUserId && (
-                    <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded mt-1 inline-block">
+                    <span className="text-xs font-semibold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded mt-1 inline-block">
                       Anda
                     </span>
                   )}
                 </td>
-                <td className="px-5 py-3 text-slate-700">{u.name || "—"}</td>
+                <td className="px-5 py-3 text-slate-700">
+                  {u.name || <span className="text-slate-500">Belum diisi</span>}
+                </td>
                 <td className="px-5 py-3">
-                  <span className="inline-block text-[11px] font-semibold uppercase tracking-wide text-primary-700 bg-primary-50 px-2 py-0.5 rounded">
+                  <span className="inline-block text-xs font-semibold text-primary-700 bg-primary-50 px-2 py-0.5 rounded">
                     {u.role || "admin"}
                   </span>
                 </td>
-                <td className="px-5 py-3 text-right">
+                <td className="px-5 py-3 text-right whitespace-nowrap">
                   <button
                     onClick={() => startEdit(u)}
                     className="text-sm font-medium text-primary-700 hover:underline mr-3"
@@ -163,7 +156,7 @@ function AdminUsersInner() {
                   <button
                     onClick={() => setConfirmDelete(u)}
                     disabled={u.id === currentUserId}
-                    className="text-sm font-medium text-slate-500 hover:text-primary-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="text-sm font-medium text-slate-600 hover:text-red-700 disabled:opacity-30 disabled:cursor-not-allowed"
                     title={
                       u.id === currentUserId
                         ? "Tidak bisa menghapus akun sendiri"
@@ -177,13 +170,15 @@ function AdminUsersInner() {
             ))}
             {users.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-5 py-10 text-center text-slate-500">
-                  Belum ada pengguna. Tambahkan user pertama di panel kanan.
+                <td colSpan={4} className="px-5 py-10 text-center text-slate-600">
+                  Belum ada pengguna. Tambahkan user pertama lewat form Tambah
+                  Pengguna.
                 </td>
               </tr>
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       <form
@@ -207,10 +202,11 @@ function AdminUsersInner() {
           onChange={(v) => setDraft({ ...draft, name: v })}
         />
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
+          <label htmlFor={roleId} className="block text-sm font-medium text-slate-700 mb-1">
             Role
           </label>
           <select
+            id={roleId}
             value={draft.role}
             onChange={(e) => setDraft({ ...draft, role: e.target.value })}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white"
@@ -229,12 +225,12 @@ function AdminUsersInner() {
         />
 
         {error && (
-          <p className="text-sm text-primary-700 bg-primary-50 px-3 py-2 rounded">
+          <p role="alert" className="text-sm text-red-800 bg-red-50 border border-red-200 px-3 py-2 rounded">
             {error}
           </p>
         )}
         {savingMsg && (
-          <p className="text-sm text-emerald-700 bg-emerald-50 px-3 py-2 rounded">
+          <p role="status" className="text-sm text-emerald-800 bg-emerald-50 px-3 py-2 rounded">
             {savingMsg}
           </p>
         )}
@@ -260,6 +256,7 @@ function AdminUsersInner() {
 
       <ConfirmDialog
         open={!!confirmDelete}
+        tone="danger"
         title="Hapus Pengguna?"
         description={
           confirmDelete
@@ -276,13 +273,15 @@ function AdminUsersInner() {
 }
 
 function Field({ label, value, onChange, type = "text", required, hint }) {
+  const id = useId();
   return (
     <div>
-      <label className="block text-sm font-medium text-slate-700 mb-1">
+      <label htmlFor={id} className="block text-sm font-medium text-slate-700 mb-1">
         {label}
         {required && <span className="text-primary-600"> *</span>}
       </label>
       <input
+        id={id}
         type={type}
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
@@ -290,7 +289,7 @@ function Field({ label, value, onChange, type = "text", required, hint }) {
         autoComplete="off"
         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600"
       />
-      {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
+      {hint && <p className="mt-1 text-xs text-slate-600">{hint}</p>}
     </div>
   );
 }

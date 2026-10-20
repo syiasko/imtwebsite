@@ -58,7 +58,7 @@ export function ConfirmDialog({
 }) {
   const confirmClass =
     tone === "danger"
-      ? "bg-primary-600 hover:bg-primary-700 text-white"
+      ? "bg-red-700 hover:bg-red-800 text-white"
       : "bg-primary-600 hover:bg-primary-700 text-white";
   return (
     <Modal

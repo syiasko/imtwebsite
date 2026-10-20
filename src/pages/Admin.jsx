@@ -99,16 +99,16 @@ export default function Admin() {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-20 text-center text-slate-500">
+      <p role="status" className="container mx-auto px-4 py-20 text-center text-slate-600">
         Memuat data...
-      </div>
+      </p>
     );
   }
 
   if (authStatus === "error") {
     return (
       <div className="container mx-auto px-4 py-20 max-w-xl">
-        <div className="rounded-2xl border border-primary-200 bg-primary-50 p-6 text-primary-900">
+        <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-900">
           <h1 className="text-lg font-bold">Firebase belum siap</h1>
           <p className="mt-2 text-sm">
             {authError?.message ||
@@ -131,10 +131,11 @@ export default function Admin() {
           <form onSubmit={onLogin} className="mt-6 space-y-4">
             {hasUsers && (
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label htmlFor="login-username" className="block text-sm font-medium text-slate-700 mb-1">
                   Username
                 </label>
                 <input
+                  id="login-username"
                   type="text"
                   name="username"
                   autoFocus
@@ -145,10 +146,11 @@ export default function Admin() {
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label htmlFor="login-password" className="block text-sm font-medium text-slate-700 mb-1">
                 Password
               </label>
               <input
+                id="login-password"
                 type="password"
                 name="password"
                 autoFocus={!hasUsers}
@@ -157,15 +159,15 @@ export default function Admin() {
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600"
               />
               {!hasUsers && !company.passwordHash && (
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-slate-600">
                   Password default:{" "}
-                  <code className="font-mono">{DEFAULT_ADMIN_PASSWORD}</code>{" "}
-                  — segera buat user via tab Pengguna setelah login.
+                  <code className="font-mono">{DEFAULT_ADMIN_PASSWORD}</code>.
+                  Segera buat user via tab Pengguna setelah login.
                 </p>
               )}
             </div>
             {error && (
-              <p className="text-sm text-primary-700 bg-primary-50 px-3 py-2 rounded">
+              <p role="alert" className="text-sm text-red-800 bg-red-50 border border-red-200 px-3 py-2 rounded">
                 {error}
               </p>
             )}
@@ -179,9 +181,9 @@ export default function Admin() {
           </form>
           <Link
             to="/"
-            className="mt-4 inline-block text-sm text-slate-500 hover:text-primary-700"
+            className="mt-4 inline-block text-sm text-slate-600 hover:text-primary-700"
           >
-            ← Kembali ke beranda
+            Kembali ke beranda
           </Link>
         </div>
       </div>
@@ -205,10 +207,7 @@ export default function Admin() {
     <div className="container mx-auto px-4 py-10">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-primary-700">
-            Admin
-          </p>
-          <h1 className="mt-1 text-3xl font-bold text-slate-900">
+          <h1 className="text-3xl font-bold text-slate-900">
             Panel Pengelolaan
           </h1>
           <p className="mt-1 text-sm text-slate-600">
@@ -217,7 +216,7 @@ export default function Admin() {
               {currentUsername || "admin"}
             </span>{" "}
             <span
-              className={`inline-block ml-1 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded ${
+              className={`inline-block ml-1 text-xs font-semibold px-2 py-0.5 rounded ${
                 isAdmin
                   ? "bg-primary-50 text-primary-700"
                   : "bg-slate-100 text-slate-600"
@@ -239,9 +238,10 @@ export default function Admin() {
       </div>
 
       {firestoreError && (
-        <div className="mt-4 rounded-lg border border-secondary-300 bg-secondary-50 px-4 py-3 text-sm text-secondary-900">
-          ⚠ Firestore: {firestoreError.message || "Subscription error"}.
-          Periksa Firestore rules di Firebase Console.
+        <div role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+          Data dari Firestore gagal dimuat:{" "}
+          {firestoreError.message || "Subscription error"}. Periksa Firestore
+          rules di Firebase Console.
         </div>
       )}
 
@@ -259,7 +259,10 @@ export default function Admin() {
           <span className="inline-flex items-center gap-1.5">
             Pesan Kontak ({messages.length})
             {unreadMessages > 0 && (
-              <span className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 text-[10px] font-bold text-white bg-secondary-500 rounded-full">
+              <span
+                className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 text-xs font-bold text-slate-900 bg-secondary-500 rounded-full"
+                aria-label={`${unreadMessages} belum dibaca`}
+              >
                 {unreadMessages}
               </span>
             )}
@@ -287,79 +290,109 @@ export default function Admin() {
   );
 }
 
+// Overview leads with what needs action (unanswered messages); totals already
+// sit in the tab labels, so they aren't repeated here.
 function Overview() {
-  const { categories, vehicles, users, greeting } = useData();
+  const { categories, vehicles, messages, greeting } = useData();
   const isAdmin = isCurrentAdmin();
+  const unread = messages.filter((m) => (m.status || "New") === "New").length;
+
   return (
-    <div className={`grid gap-6 ${isAdmin ? "md:grid-cols-4 lg:grid-cols-5" : "md:grid-cols-3"}`}>
-      <StatCard label="Total Kategori" value={categories.length} />
-      <StatCard label="Total Kendaraan" value={vehicles.length} />
-      {isAdmin && (
-        <StatCard label="Total Pengguna" value={users.length} />
-      )}
-      {isAdmin && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 flex flex-col justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Status Greeting Live
+    <div className="grid gap-6 lg:grid-cols-3">
+      <section
+        className={`bg-white rounded-2xl border p-6 ${
+          isAdmin ? "lg:col-span-2" : "lg:col-span-3"
+        } ${unread > 0 ? "border-secondary-500" : "border-slate-200"}`}
+      >
+        <h2 className="font-semibold text-slate-900">Pesan kontak</h2>
+        {unread > 0 ? (
+          <>
+            <p className="mt-2 text-3xl font-bold text-slate-900">
+              {unread} pesan belum dibaca
             </p>
-            <div className="mt-2 flex items-center gap-2">
-              <span className={`h-3 w-3 rounded-full ${greeting?.isActive ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
-              <p className="text-2xl font-bold text-slate-900">
-                {greeting?.isActive ? "Aktif" : "Nonaktif"}
-              </p>
-            </div>
-          </div>
+            <Link
+              to={`${ADMIN_BASE_PATH}/pesan`}
+              className="mt-4 inline-block px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold"
+            >
+              Buka pesan
+            </Link>
+          </>
+        ) : (
+          <p className="mt-2 text-sm text-slate-600">
+            Tidak ada pesan baru. Pesan dari form Kontak di website akan muncul
+            di tab Pesan Kontak.
+          </p>
+        )}
+      </section>
+
+      {isAdmin && (
+        <section className="bg-white rounded-2xl border border-slate-200 p-6">
+          <h2 className="font-semibold text-slate-900">Greeting signage</h2>
+          <p className="mt-2 flex items-center gap-2 text-2xl font-bold text-slate-900">
+            <span
+              aria-hidden="true"
+              className={`h-3 w-3 rounded-full ${
+                greeting?.isActive ? "bg-emerald-600" : "bg-slate-400"
+              }`}
+            />
+            {greeting?.isActive ? "Aktif" : "Nonaktif"}
+          </p>
           <Link
             to={`${ADMIN_BASE_PATH}/greeting`}
-            className="mt-2 text-xs font-semibold text-primary-600 hover:underline"
+            className="mt-3 inline-block text-sm font-semibold text-primary-700 hover:underline"
           >
-            Kelola Greeting →
+            Kelola greeting
           </Link>
-        </div>
+        </section>
       )}
-      <StatCard
-        label="Rata-rata Unit / Kategori"
-        value={
-          categories.length === 0
-            ? 0
-            : (vehicles.length / categories.length).toFixed(1)
-        }
-      />
-      <div className={`bg-white rounded-2xl border border-slate-200 p-6 ${isAdmin ? "md:col-span-4 lg:col-span-5" : "md:col-span-3"}`}>
-        <h2 className="font-semibold text-slate-900">Sebaran per Kategori</h2>
-        <ul className="mt-4 space-y-3">
-          {categories.map((c) => {
-            const count = vehicles.filter((v) => v.categoryId === c.id).length;
-            const pct = vehicles.length ? (count / vehicles.length) * 100 : 0;
-            return (
-              <li key={c.id}>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="font-medium text-slate-700">{c.name}</span>
-                  <span className="text-slate-500">{count} unit</span>
-                </div>
-                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-primary-600"
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
+
+      <section className="lg:col-span-3 bg-white rounded-2xl border border-slate-200 p-6">
+        <h2 className="font-semibold text-slate-900">Unit per kategori</h2>
+        {categories.length === 0 ? (
+          <p className="mt-2 text-sm text-slate-600">
+            Belum ada kategori. Tambahkan di tab Kategori.
+          </p>
+        ) : (
+          <ul className="mt-4 space-y-3">
+            {categories.map((c) => {
+              const count = vehicles.filter((v) => v.categoryId === c.id).length;
+              const pct = vehicles.length ? (count / vehicles.length) * 100 : 0;
+              return (
+                <li key={c.id}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="font-medium text-slate-700">{c.name}</span>
+                    <span className={count ? "text-slate-600" : "font-medium text-secondary-800"}>
+                      {count ? `${count} unit` : "Belum ada unit"}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary-600"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }
 
-function StatCard({ label, value }) {
+// Shared "role too low" screen for admin-only tabs.
+export function AccessDenied({ children }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-6">
-      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-        {label}
-      </p>
-      <p className="mt-2 text-3xl font-bold text-slate-900">{value}</p>
+    <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center">
+      <h2 className="text-xl font-bold text-slate-900">Akses dibatasi</h2>
+      <p className="mt-2 text-sm text-slate-600 max-w-md mx-auto">{children}</p>
+      <Link
+        to={ADMIN_BASE_PATH}
+        className="mt-6 inline-block px-5 py-2.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-semibold"
+      >
+        Kembali ke Ringkasan
+      </Link>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../../context/DataContext";
 import { useToast } from "../../context/ToastContext";
 import { ConfirmDialog } from "../../components/Modal";
@@ -16,9 +16,9 @@ const STATUS_LABEL = {
 
 const STATUS_TONE = {
   [STATUS_NEW]:
-    "bg-secondary-100 text-secondary-800 border border-secondary-300",
+    "bg-secondary-100 text-secondary-900 border border-secondary-300",
   [STATUS_READ]: "bg-slate-100 text-slate-700 border border-slate-300",
-  [STATUS_REPLIED]: "bg-emerald-100 text-emerald-700 border border-emerald-300",
+  [STATUS_REPLIED]: "bg-emerald-100 text-emerald-800 border border-emerald-300",
 };
 
 const FILTERS = [
@@ -39,7 +39,7 @@ const tsToDate = (val) => {
 
 const timeAgo = (val) => {
   const d = tsToDate(val);
-  if (!d) return "—";
+  if (!d) return "tanpa tanggal";
   const seconds = Math.floor((Date.now() - d.getTime()) / 1000);
   if (seconds < 30) return "baru saja";
   if (seconds < 60) return `${seconds} detik lalu`;
@@ -75,6 +75,19 @@ export default function AdminMessages() {
   const [openId, setOpenId] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const isAdmin = isCurrentAdmin();
+  const detailRef = useRef(null);
+
+  // On narrow screens the detail panel sits below the (long) list, so bring
+  // it into view when a message is opened.
+  const openMessage = (id) => {
+    setOpenId(id);
+    if (window.matchMedia("(max-width: 1023px)").matches) {
+      setTimeout(
+        () => detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+        50
+      );
+    }
+  };
 
   const counts = useMemo(() => {
     const c = { all: messages.length, [STATUS_NEW]: 0, [STATUS_READ]: 0, [STATUS_REPLIED]: 0 };
@@ -109,7 +122,7 @@ export default function AdminMessages() {
       company.shortName || company.name
     }.\n\n`;
     const quote = msg.message
-      ? `\n\n—\nPesan asli Anda:\n> ${msg.message.split("\n").join("\n> ")}\n`
+      ? `\n\n-----\nPesan asli Anda:\n> ${msg.message.split("\n").join("\n> ")}\n`
       : "";
     const body = `${greeting}${quote}`;
     const mailto = `mailto:${encodeURIComponent(
@@ -157,10 +170,10 @@ export default function AdminMessages() {
 
   return (
     <div className="grid lg:grid-cols-5 gap-6">
-      <div className="lg:col-span-3 space-y-4">
+      <div className="lg:col-span-3 min-w-0 space-y-4">
         <div className="bg-white rounded-2xl border border-slate-200 p-4">
           <h2 className="font-semibold text-slate-900">Pesan Kontak</h2>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-sm text-slate-600 mt-0.5">
             Total {counts.all} pesan, {counts[STATUS_NEW]} belum dibaca.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -172,7 +185,8 @@ export default function AdminMessages() {
                   key={f.key}
                   type="button"
                   onClick={() => setFilter(f.key)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                  aria-pressed={active}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
                     active
                       ? "bg-primary-600 text-white"
                       : "bg-white text-slate-700 border border-slate-200 hover:border-primary-300"
@@ -187,8 +201,19 @@ export default function AdminMessages() {
 
         <ul className="space-y-3">
           {filtered.length === 0 && (
-            <li className="rounded-2xl border-2 border-dashed border-slate-200 p-10 text-center text-slate-500">
-              Tidak ada pesan pada filter ini.
+            <li className="rounded-2xl border-2 border-dashed border-slate-300 p-10 text-center text-slate-600">
+              {messages.length === 0
+                ? "Belum ada pesan masuk. Pesan yang dikirim lewat form Kontak di website akan muncul di sini."
+                : `Tidak ada pesan berstatus "${FILTERS.find((f) => f.key === filter)?.label}".`}
+              {messages.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setFilter("all")}
+                  className="mt-3 block mx-auto text-sm font-semibold text-primary-700 hover:underline"
+                >
+                  Tampilkan semua pesan
+                </button>
+              )}
             </li>
           )}
           {filtered.map((m) => {
@@ -198,7 +223,8 @@ export default function AdminMessages() {
               <li key={m.id}>
                 <button
                   type="button"
-                  onClick={() => setOpenId(m.id)}
+                  onClick={() => openMessage(m.id)}
+                  aria-current={active ? "true" : undefined}
                   className={`w-full text-left bg-white rounded-2xl border p-4 transition hover:border-primary-300 hover:shadow-sm ${
                     active ? "border-primary-500 ring-2 ring-primary-100" : "border-slate-200"
                   }`}
@@ -210,7 +236,7 @@ export default function AdminMessages() {
                           {m.name}
                         </p>
                         <span
-                          className={`text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full ${
+                          className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                             STATUS_TONE[status] || STATUS_TONE[STATUS_NEW]
                           }`}
                         >
@@ -231,7 +257,7 @@ export default function AdminMessages() {
                         </p>
                       )}
                     </div>
-                    <span className="text-xs text-slate-400 whitespace-nowrap flex-shrink-0">
+                    <span className="text-xs text-slate-600 whitespace-nowrap flex-shrink-0">
                       {timeAgo(m.created_at)}
                     </span>
                   </div>
@@ -242,13 +268,12 @@ export default function AdminMessages() {
         </ul>
       </div>
 
-      <aside className="lg:col-span-2">
+      <aside ref={detailRef} className="lg:col-span-2 scroll-mt-20">
         <div className="sticky top-20">
           {!opened ? (
-            <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-10 text-center text-slate-500">
-              <p className="text-3xl">📬</p>
-              <p className="mt-2 text-sm">
-                Pilih pesan di kiri untuk melihat detail dan membalas.
+            <div className="bg-white rounded-2xl border-2 border-dashed border-slate-300 p-10 text-center text-slate-600">
+              <p className="text-sm">
+                Pilih pesan dari daftar untuk melihat detail dan membalas.
               </p>
             </div>
           ) : (
@@ -288,12 +313,12 @@ export default function AdminMessages() {
                         Instansi: {opened.company}
                       </p>
                     )}
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-slate-600 mt-1">
                       {formatFull(opened.created_at)}
                     </p>
                   </div>
                   <span
-                    className={`text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full ${
+                    className={`text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${
                       STATUS_TONE[opened.status || STATUS_NEW]
                     }`}
                   >
@@ -312,7 +337,7 @@ export default function AdminMessages() {
                   onClick={() => onReply(opened)}
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-semibold text-sm"
                 >
-                  ✉️ Balas via Email
+                  Balas via Email
                 </button>
                 {(opened.status || STATUS_NEW) === STATUS_REPLIED ? (
                   <button
@@ -335,7 +360,7 @@ export default function AdminMessages() {
                   <button
                     type="button"
                     onClick={() => setConfirmDelete(opened)}
-                    className="ml-auto px-4 py-2 rounded-lg text-slate-500 hover:text-primary-700 font-medium text-sm"
+                    className="ml-auto px-4 py-2 rounded-lg text-slate-600 hover:text-red-700 hover:bg-red-50 font-medium text-sm"
                   >
                     Hapus
                   </button>
@@ -348,6 +373,7 @@ export default function AdminMessages() {
 
       <ConfirmDialog
         open={!!confirmDelete}
+        tone="danger"
         title="Hapus Pesan?"
         description={
           confirmDelete

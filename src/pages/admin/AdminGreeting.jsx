@@ -1,27 +1,17 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useId, useState } from "react";
 import { useData } from "../../context/DataContext";
-import { ADMIN_BASE_PATH, isCurrentAdmin } from "../Admin";
+import { AccessDenied, isCurrentAdmin } from "../Admin";
+
+const DEFAULT_TEXT =
+  "Selamat Datang di IMT Karoseri, Mitra Terpercaya Kendaraan Khusus Indonesia";
 
 export default function AdminGreeting() {
   if (!isCurrentAdmin()) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center">
-        <p className="text-4xl">🔒</p>
-        <h2 className="mt-3 text-xl font-bold text-slate-900">
-          Akses dibatasi
-        </h2>
-        <p className="mt-2 text-sm text-slate-600 max-w-md mx-auto">
-          Hanya pengguna dengan role <strong>Admin</strong> yang dapat
-          mengelola pengaturan Live Greeting digital signage. Hubungi administrator untuk akses.
-        </p>
-        <Link
-          to={ADMIN_BASE_PATH}
-          className="mt-6 inline-block px-5 py-2.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-semibold"
-        >
-          Kembali ke Ringkasan
-        </Link>
-      </div>
+      <AccessDenied>
+        Hanya pengguna dengan role <strong>Admin</strong> yang dapat mengelola
+        greeting digital signage. Hubungi administrator untuk akses.
+      </AccessDenied>
     );
   }
   return <AdminGreetingInner />;
@@ -39,6 +29,7 @@ function AdminGreetingInner() {
   });
   const [savingMsg, setSavingMsg] = useState("");
   const [savingErr, setSavingErr] = useState("");
+  const textId = useId();
 
   // Sync draft with Firestore data on load / change
   useEffect(() => {
@@ -69,7 +60,7 @@ function AdminGreetingInner() {
         guestTitle: draft.guestTitle.trim(),
         guestCompany: draft.guestCompany.trim(),
       });
-      setSavingMsg("Greeting berhasil diperbarui secara live!");
+      setSavingMsg("Greeting tersimpan dan langsung tampil di signage.");
       setTimeout(() => setSavingMsg(""), 3500);
     } catch (err) {
       setSavingErr(err.message || "Gagal menyimpan greeting.");
@@ -94,7 +85,7 @@ function AdminGreetingInner() {
     const hasCompany = !!draft.guestCompany?.trim();
     const hasA = hasName || hasTitle || hasCompany;
 
-    const baseText = draft.text?.trim() || "Selamat Datang di IMT Karoseri — Mitra Terpercaya Kendaraan Khusus Indonesia";
+    const baseText = draft.text?.trim() || DEFAULT_TEXT;
     const prefix = "Selamat Datang";
     
     // Strip "Selamat Datang" from B text if it starts with it
@@ -154,7 +145,7 @@ function AdminGreetingInner() {
   return (
     <div className="space-y-8">
       {/* Visual Live Simulator */}
-      <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 shadow-xl relative overflow-hidden">
+      <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 relative overflow-hidden">
         <style dangerouslySetInnerHTML={{__html: `
           @keyframes previewMarquee {
             0% { transform: translate3d(0, 0, 0); }
@@ -165,25 +156,25 @@ function AdminGreetingInner() {
             width: max-content;
             animation: previewMarquee 20s linear infinite;
           }
+          @media (prefers-reduced-motion: reduce) {
+            .preview-animate-marquee { animation: none; }
+          }
         `}} />
 
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              Live Preview Simulator (Signage TV View)
+            <h2 className="text-sm font-semibold text-white">
+              Pratinjau tampilan signage
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Simulasi tampilan pada billboard/kiosk signage secara waktu-nyata
+            <p className="text-xs text-slate-300 mt-0.5">
+              Mengikuti isi form di bawah. Perubahan baru tampil di TV setelah
+              disimpan.
             </p>
           </div>
-          <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full ${
-            draft.isActive 
-              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
-              : "bg-slate-800 text-slate-500 border border-slate-700"
+          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${
+            draft.isActive
+              ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/30"
+              : "bg-slate-800 text-slate-300 border border-slate-700"
           }`}>
             {draft.isActive ? "Aktif di TV" : "Nonaktif di TV"}
           </span>
@@ -237,8 +228,8 @@ function AdminGreetingInner() {
               </div>
             </>
           ) : (
-            <div className="w-full text-center text-slate-500 font-medium text-sm flex items-center justify-center gap-2">
-              <span>🔇 Bar greeting saat ini dinonaktifkan</span>
+            <div className="w-full text-center text-slate-300 font-medium text-sm">
+              Bar greeting sedang nonaktif
             </div>
           )}
         </div>
@@ -248,8 +239,9 @@ function AdminGreetingInner() {
       <form onSubmit={onSave} className="bg-white rounded-2xl border border-slate-200 p-6 space-y-6">
         <div>
           <h2 className="text-lg font-bold text-slate-900">Kelola Live Greeting</h2>
-          <p className="text-sm text-slate-500">
-            Gunakan kolom di bawah ini untuk menyambut tamu kehormatan/spesifik, atau gunakan baris teks bebas umum.
+          <p className="text-sm text-slate-600">
+            Isi data tamu untuk menyambut tamu tertentu, atau cukup isi teks
+            greeting umum.
           </p>
         </div>
 
@@ -259,8 +251,8 @@ function AdminGreetingInner() {
             <label className="text-sm font-bold text-slate-800 block cursor-pointer" htmlFor="isActive">
               Aktifkan Greeting Bar
             </label>
-            <p className="text-xs text-slate-500">
-              Aktifkan untuk langsung menampilkan banner berjalan di bagian atas aplikasi Signage & Screensaver.
+            <p className="text-xs text-slate-600">
+              Menampilkan teks berjalan di bagian atas aplikasi Signage & Screensaver.
             </p>
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
@@ -271,26 +263,30 @@ function AdminGreetingInner() {
               onChange={(e) => update("isActive", e.target.checked)}
               className="sr-only peer"
             />
-            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+            <div className="w-11 h-6 bg-slate-300 rounded-full peer peer-focus-visible:ring-2 peer-focus-visible:ring-primary-600 peer-focus-visible:ring-offset-2 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
           </label>
         </div>
 
         {/* Section: Structured Guests */}
-        <div className="border border-slate-100 rounded-xl p-5 bg-gradient-to-br from-slate-50/50 via-white to-slate-50/50 space-y-4">
-          <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-            <span className="text-lg">👑</span>
-            <div>
-              <h3 className="text-sm font-bold text-slate-800">Menyambut Tamu Spesifik (Rekomendasi)</h3>
-              <p className="text-xs text-slate-500">Formulir terstruktur khusus untuk penyambutan pejabat, kementerian, atau delegasi instansi.</p>
-            </div>
+        <div className="border border-slate-200 rounded-xl p-5 space-y-4">
+          <div className="pb-2 border-b border-slate-100">
+            <h3 className="text-sm font-bold text-slate-800">Data tamu</h3>
+            <p className="text-xs text-slate-600">
+              Untuk menyambut pejabat, kementerian, atau delegasi instansi.
+              Kosongkan semua jika tidak ada tamu khusus.
+            </p>
           </div>
 
           <div className="grid md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Panggilan / Gender
-              </label>
-              <div className="bg-slate-100 p-1 rounded-lg flex gap-1 h-[38px] items-stretch border border-slate-200">
+              <p id="gender-label" className="block text-xs font-bold text-slate-700 mb-1">
+                Panggilan
+              </p>
+              <div
+                role="group"
+                aria-labelledby="gender-label"
+                className="bg-slate-100 p-1 rounded-lg flex gap-1 h-[38px] items-stretch border border-slate-200"
+              >
                 {["Bapak", "Ibu", "Bapak/Ibu"].map((opt) => {
                   const isActive = (draft.guestGender || "Bapak/Ibu") === opt;
                   return (
@@ -298,7 +294,8 @@ function AdminGreetingInner() {
                       key={opt}
                       type="button"
                       onClick={() => update("guestGender", opt)}
-                      className={`flex-1 text-center rounded-md text-[11px] font-bold transition-all flex items-center justify-center ${
+                      aria-pressed={isActive}
+                      className={`flex-1 text-center rounded-md text-xs font-bold transition-all flex items-center justify-center ${
                         isActive
                           ? "bg-primary-600 text-white shadow-sm"
                           : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
@@ -309,8 +306,8 @@ function AdminGreetingInner() {
                   );
                 })}
               </div>
-              <p className="mt-1 text-[10px] text-slate-400 font-medium">
-                Panggilan kehormatan sebelum nama
+              <p className="mt-1 text-xs text-slate-600">
+                Ditulis sebelum nama tamu
               </p>
             </div>
             <Field
@@ -318,39 +315,41 @@ function AdminGreetingInner() {
               value={draft.guestName}
               onChange={(v) => update("guestName", v)}
               placeholder="Contoh: Budi Santoso"
-              hint="Format bold-gold dengan garis bawah hias"
+              hint="Contoh tampilan: Bapak Budi Santoso"
             />
             <Field
               label="Jabatan / Posisi Tamu"
               value={draft.guestTitle}
               onChange={(v) => update("guestTitle", v)}
               placeholder="Contoh: Menteri"
-              hint="Ditampilkan dalam tanda kurung soft-blue"
+              hint="Ditulis dalam kurung setelah nama"
             />
             <Field
               label="Nama Perusahaan / Instansi"
               value={draft.guestCompany}
               onChange={(v) => update("guestCompany", v)}
               placeholder="Contoh: Kementerian ESDM"
-              hint="Ditampilkan dalam format bold-white"
+              hint='Ditulis setelah kata "dari"'
             />
           </div>
         </div>
 
         {/* Section: Free Text / Fallback */}
         <div className="space-y-2">
-          <label className="block text-sm font-bold text-slate-800">
-            Teks Greeting Umum / Fallback
+          <label htmlFor={textId} className="block text-sm font-bold text-slate-800">
+            Teks greeting umum
           </label>
           <textarea
+            id={textId}
             rows="3"
             value={draft.text}
             onChange={(e) => update("text", e.target.value)}
-            placeholder="Selamat Datang di IMT Karoseri — Mitra Terpercaya Kendaraan Khusus Indonesia"
+            placeholder={DEFAULT_TEXT}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600"
           />
-          <p className="text-xs text-slate-500">
-            Digunakan otomatis sebagai teks berjalan jika kolom **Nama Lengkap Tamu** di atas kosong.
+          <p className="text-xs text-slate-600">
+            Selalu tampil di teks berjalan. Jika data tamu diisi, teks ini
+            muncul setelah nama tamu. Jika dikosongkan, dipakai teks bawaan.
           </p>
         </div>
 
@@ -358,26 +357,26 @@ function AdminGreetingInner() {
         <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
           <button
             type="submit"
-            className="px-5 py-2.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-bold transition-all shadow-md active:scale-95"
+            className="px-5 py-2.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-semibold"
           >
             Simpan Pengaturan Greeting
           </button>
           <button
             type="button"
             onClick={clearForm}
-            className="px-4 py-2.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold transition-all"
+            className="px-4 py-2.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold"
           >
             Reset Form
           </button>
 
           {savingMsg && (
-            <span className="text-sm text-emerald-600 font-bold bg-emerald-50 px-3 py-1.5 rounded-md border border-emerald-100 animate-fade-in flex items-center gap-1.5">
-              <span>✅</span> {savingMsg}
+            <span role="status" className="text-sm text-emerald-800 font-semibold bg-emerald-50 px-3 py-1.5 rounded-md border border-emerald-200">
+              {savingMsg}
             </span>
           )}
           {savingErr && (
-            <span className="text-sm text-primary-700 font-bold bg-primary-50 px-3 py-1.5 rounded-md border border-primary-100 animate-fade-in flex items-center gap-1.5">
-              <span>⚠️</span> {savingErr}
+            <span role="alert" className="text-sm text-red-800 font-semibold bg-red-50 px-3 py-1.5 rounded-md border border-red-200">
+              {savingErr}
             </span>
           )}
         </div>
@@ -396,21 +395,23 @@ function Field({
   hint,
   className = "",
 }) {
+  const id = useId();
   return (
     <div className={className}>
-      <label className="block text-xs font-bold text-slate-700 mb-1">
+      <label htmlFor={id} className="block text-xs font-bold text-slate-700 mb-1">
         {label}
         {required && <span className="text-primary-600"> *</span>}
       </label>
       <input
+        id={id}
         type={type}
         value={value || ""}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
         required={required}
-        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600 placeholder-slate-400"
+        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600 placeholder-slate-500"
       />
-      {hint && <p className="mt-1 text-[10px] text-slate-400 font-medium">{hint}</p>}
+      {hint && <p className="mt-1 text-xs text-slate-600">{hint}</p>}
     </div>
   );
 }
