@@ -14,6 +14,7 @@ import AdminSettings from "./pages/admin/AdminSettings";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminMessages from "./pages/admin/AdminMessages";
 import AdminGreeting from "./pages/admin/AdminGreeting";
+import AdminAccount from "./pages/admin/AdminAccount";
 import ToastViewport from "./components/Toast";
 import { trackPageView } from "./firebase/config";
 import { useT } from "./context/LanguageContext";
@@ -60,6 +61,7 @@ export default function App() {
             <Route path="greeting" element={<AdminGreeting />} />
             <Route path="pengaturan" element={<AdminSettings />} />
             <Route path="pengguna" element={<AdminUsers />} />
+            <Route path="akun" element={<AdminAccount />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -6,10 +6,10 @@ import { useT } from "../context/LanguageContext";
 //   const loadState = useLoadState();
 //   return loadState || <Content />;
 export function useLoadState() {
-  const { loading, firestoreError, authStatus } = useData();
+  const { loading, firestoreError } = useData();
   const { t } = useT();
 
-  if (firestoreError || authStatus === "error") {
+  if (firestoreError) {
     return (
       <div
         role="alert"

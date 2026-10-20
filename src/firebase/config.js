@@ -1,9 +1,9 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
 import { getAnalytics, isSupported, logEvent } from "firebase/analytics";
-import { getAuth, signInAnonymously } from "firebase/auth";
+import { connectAuthEmulator, getAuth } from "firebase/auth";
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyDdki2bvmzBwhVL3vW4OOmw9X7ScuLbwHo",
   authDomain: "imtwebsite-ddf59.firebaseapp.com",
   projectId: "imtwebsite-ddf59",
@@ -17,25 +17,21 @@ export const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 
-let authPromise = null;
-export const ensureAnonAuth = () => {
-  if (auth.currentUser) return Promise.resolve(auth.currentUser);
-  if (!authPromise) {
-    authPromise = signInAnonymously(auth)
-      .then((cred) => cred.user)
-      .catch((err) => {
-        authPromise = null;
-        const reason =
-          err?.code === "auth/admin-restricted-operation"
-            ? "Anonymous sign-in belum diaktifkan di Firebase Console (Authentication → Sign-in method → Anonymous)."
-            : err?.message || "Gagal sign-in anonymous.";
-        const wrapped = new Error(reason);
-        wrapped.code = err?.code;
-        throw wrapped;
-      });
-  }
-  return authPromise;
-};
+// `VITE_FIREBASE_EMULATORS=1 npm run dev` talks to `firebase emulators:start`
+// instead of production, for testing logins and rules locally.
+export const USE_EMULATORS = import.meta.env.VITE_FIREBASE_EMULATORS === "1";
+export const AUTH_EMULATOR_URL = "http://127.0.0.1:9099";
+if (USE_EMULATORS) {
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+  connectAuthEmulator(auth, AUTH_EMULATOR_URL, { disableWarnings: true });
+}
+
+// Staff log in with a username; Firebase Auth needs an email, so each
+// username maps to an address on the project's own auth domain. No mail is
+// ever sent to it.
+export const STAFF_EMAIL_DOMAIN = "imtwebsite-ddf59.firebaseapp.com";
+export const staffEmail = (username) =>
+  `${username.trim().toLowerCase()}@${STAFF_EMAIL_DOMAIN}`;
 
 let analyticsPromise = null;
 const getAnalyticsLazy = async () => {

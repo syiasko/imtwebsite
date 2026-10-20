@@ -12,32 +12,42 @@ Single-page React app untuk showcase **PT. INDRAPRASTA MULIA TEKNIK** (IMT Karos
 - Halaman kontak dengan Google Maps embed + WhatsApp CTA
 
 ### Admin Panel (`/dapurnyaimt`)
-- Login dengan password (hash SHA-256 disimpan di Firestore)
+- Login username + password lewat Firebase Authentication (email/password)
+- Role **admin** dan **editor** disimpan di `users/{uid}`; Firestore rules memeriksa role di server
 - **Kategori** — CRUD kategori kendaraan
 - **Kendaraan** — CRUD unit kendaraan dengan upload foto, spec key/value, fitur unggulan
 - **Company Setting** — edit identitas perusahaan, alamat, kontak, URL YouTube, Google Maps embed, dan upload katalog PDF
-- Ganti password admin
-- Reset data ke seed default
+- **Pengguna** (admin) — tambah user baru, ubah nama/role, cabut akses
+- **Ganti password** — setiap user mengganti password-nya sendiri
 
-> Default password admin: `imt-admin` — **wajib diganti setelah login pertama**.
+> Password user lain tidak bisa diganti dari panel. Kalau ada yang lupa
+> password, reset di Firebase Console → Authentication → Users.
 
 ## Stack
 
 - React 18 + Vite 5 + React Router 6
 - Tailwind CSS 3 dengan palette: `primary #00428f` / `secondary #feae00` / `black & white`
-- **Firebase**: Firestore (data), Anonymous Auth (untuk write rules), Analytics (page tracking + custom events)
+- **Firebase**: Firestore (data), Authentication email/password (login admin), Analytics (page tracking + custom events)
 - Vercel-ready (lihat `vercel.json` — SPA rewrites)
 
 ## Setup Firebase (sekali setup)
 
 Project sudah hard-code ke `imtwebsite-ddf59`. Yang perlu dilakukan di Firebase Console:
 
-1. **Authentication** → Sign-in method → **Anonymous** → Enable
-2. **Firestore Database** → Create Database → Production mode
-3. **Firestore Rules** → paste dari `firestore.rules`
-4. **Analytics** sudah otomatis aktif via `measurementId`
+1. **Authentication** → Sign-in method → **Email/Password** → Enable
+   (atau `firebase deploy --only auth`, konfigurasinya ada di `firebase.json`)
+2. **Firestore Rules** → `firebase deploy --only firestore:rules`
+3. **Analytics** sudah otomatis aktif via `measurementId`
 
-Saat pertama kali user membuka website, app akan auto-seed Firestore dengan data default.
+Username login dipetakan ke email `<username>@imtwebsite-ddf59.firebaseapp.com`
+di Firebase Auth. Tidak ada email yang dikirim ke alamat itu.
+
+### Tes lokal dengan emulator
+
+```bash
+firebase emulators:start               # auth :9099, firestore :8080 (butuh Java)
+VITE_FIREBASE_EMULATORS=1 npm run dev  # app memakai emulator, bukan produksi
+```
 
 > Foto kendaraan disimpan sebagai data URL (base64) di **Firestore** — gratis dalam free tier sampai 1 GB. Untuk muat 10 foto dalam 1 dokumen Firestore (limit 1 MB/dok), tiap foto otomatis dikompres ke ≤90 KB base64. Tidak perlu Firebase Storage (yang berbayar).
 
@@ -55,10 +65,10 @@ npm run preview  # preview hasil build
 ```
 src/
   firebase/
-    config.js      Firebase init + analytics + ensureAnonAuth
-    api.js         Firestore data access (subscribe, save, delete, seed)
-    password.js    SHA-256 + verify helper
+    config.js      Firebase init + analytics + emulator switch
+    api.js         Firestore data access (subscribe, save, delete) + pembuatan akun staf
   context/
+    AuthContext.jsx   login Firebase Auth + profil/role user
     DataContext.jsx   subscribe Firestore + state + actions
   data/
     initialData.js    seed defaults (categories, vehicles, company)

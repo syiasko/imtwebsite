@@ -4,17 +4,15 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import {
-  initialCategories,
-  initialVehicles,
   initialCompanySettings,
   DEFAULT_MAPS_PLACE_QUERY,
   buildMapsEmbedUrl,
 } from "../data/initialData";
 import {
+  createStaffAccount,
   deleteCategoryDoc,
   deleteContactMessage,
   deleteUserDoc,
@@ -24,7 +22,6 @@ import {
   saveGreeting,
   saveUser,
   saveVehicle,
-  seedIfEmpty,
   subscribeCategories,
   subscribeCompany,
   subscribeContactMessages,
@@ -33,13 +30,13 @@ import {
   subscribeVehicles,
   updateContactMessageStatus,
 } from "../firebase/api";
-import { ensureAnonAuth } from "../firebase/config";
-import { sha256Hex } from "../firebase/password";
 import { slugify } from "../utils/slug";
+import { useAuth } from "./AuthContext";
 
 const DataContext = createContext(null);
 
 export function DataProvider({ children }) {
+  const { isStaff, isAdmin } = useAuth();
   const [categories, setCategories] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [users, setUsers] = useState([]);
@@ -54,90 +51,46 @@ export function DataProvider({ children }) {
     guestCompany: "",
   });
   const [loading, setLoading] = useState(true);
-  const [authStatus, setAuthStatus] = useState("idle"); // idle | ok | error
-  const [authError, setAuthError] = useState(null);
   const [firestoreError, setFirestoreError] = useState(null);
-  const seedRef = useRef(false);
 
+  // Public collections: readable by every visitor without signing in.
   useEffect(() => {
-    let unsubCats = () => {};
-    let unsubVeh = () => {};
-    let unsubCompany = () => {};
-    let unsubGreeting = () => {};
-    let unsubUsers = () => {};
-    let unsubMessages = () => {};
-    let cancelled = false;
+    const onSubError = (err) => {
+      console.error("Firestore subscription error:", err);
+      setFirestoreError(err);
+      setLoading(false);
+    };
 
-    (async () => {
-      try {
-        await ensureAnonAuth();
-        if (cancelled) return;
-        setAuthStatus("ok");
-        setAuthError(null);
+    // Stay in the loading state until every collection the UI reads has
+    // delivered its first snapshot; otherwise screens briefly show empty
+    // lists or the default greeting status.
+    const pending = new Set(["categories", "vehicles", "greeting", "company"]);
+    const markReady = (key) => {
+      if (pending.delete(key) && pending.size === 0) setLoading(false);
+    };
 
-        if (!seedRef.current) {
-          seedRef.current = true;
-          await seedIfEmpty({
-            categories: initialCategories,
-            vehicles: initialVehicles,
-            company: initialCompanySettings,
-          }).catch((err) => {
-            console.warn("Seed skipped:", err?.message || err);
-          });
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setAuthStatus("error");
-          setAuthError(err);
-          setLoading(false);
-        }
-        return;
-      }
-
-      if (cancelled) return;
-
-      const onSubError = (err) => {
-        console.error("Firestore subscription error:", err);
-        setFirestoreError(err);
-        setLoading(false);
-      };
-
-      // Stay in the loading state until every collection the UI reads has
-      // delivered its first snapshot; otherwise screens briefly show empty
-      // lists, default greeting status, or the wrong login form.
-      const pending = new Set(["categories", "vehicles", "users", "greeting", "company"]);
-      const markReady = (key) => {
-        if (pending.delete(key) && pending.size === 0) setLoading(false);
-      };
-
-      unsubCats = subscribeCategories((rows) => {
+    const unsubs = [
+      subscribeCategories((rows) => {
         setCategories(rows);
         markReady("categories");
-      }, onSubError);
-      unsubVeh = subscribeVehicles((rows) => {
+      }, onSubError),
+      subscribeVehicles((rows) => {
         setVehicles(rows);
         markReady("vehicles");
-      }, onSubError);
-      unsubUsers = subscribeUsers((rows) => {
-        setUsers(rows);
-        markReady("users");
-      }, onSubError);
-      unsubGreeting = subscribeGreeting((data) => {
+      }, onSubError),
+      subscribeGreeting((data) => {
         if (data) {
           setGreeting((prev) => ({ ...prev, ...data }));
         }
         markReady("greeting");
-      }, onSubError);
-      unsubMessages = subscribeContactMessages(
-        (rows) => setMessages(rows),
-        // Don't surface errors here — anonymous visitors can hit a permission
-        // denied if the rules don't allow read; that's fine, we just won't
-        // populate the admin list for them.
-        () => {}
-      );
-      unsubCompany = subscribeCompany((data) => {
+      }, onSubError),
+      subscribeCompany((data) => {
         setCompany((prev) => {
-          const merged = { ...initialCompanySettings, ...(data || prev) };
+          // passwordHash belongs to the old shared-password login; never keep it.
+          const { passwordHash, ...merged } = {
+            ...initialCompanySettings,
+            ...(data || prev),
+          };
           // Migration: existing Firestore docs from the original seed have a
           // mapsEmbedUrl built from the raw address string, which Google
           // Maps renders without the proper Place pin. If we detect that
@@ -157,19 +110,33 @@ export function DataProvider({ children }) {
         });
         markReady("company");
         setFirestoreError(null);
-      }, onSubError);
-    })();
-
-    return () => {
-      cancelled = true;
-      unsubCats();
-      unsubVeh();
-      unsubCompany();
-      unsubGreeting();
-      unsubUsers();
-      unsubMessages();
-    };
+      }, onSubError),
+    ];
+    return () => unsubs.forEach((u) => u());
   }, []);
+
+  // Staff-only collections; the rules deny these to everyone else.
+  useEffect(() => {
+    if (!isStaff) {
+      setMessages([]);
+      return undefined;
+    }
+    return subscribeContactMessages(
+      (rows) => setMessages(rows),
+      (err) => console.error("Contact messages subscription error:", err)
+    );
+  }, [isStaff]);
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setUsers([]);
+      return undefined;
+    }
+    return subscribeUsers(
+      (rows) => setUsers(rows),
+      (err) => console.error("Users subscription error:", err)
+    );
+  }, [isAdmin]);
 
   // --- Categories
   const upsertCategory = useCallback(async (category) => {
@@ -223,25 +190,22 @@ export function DataProvider({ children }) {
   );
 
   // --- Users
+  // Passwords live in Firebase Auth. A new user gets an Auth account plus a
+  // users/{uid} profile; editing only changes name and role.
   const upsertUser = useCallback(
-    async ({ id, username, name, role, password, passwordHash }) => {
+    async ({ id, username, name, role, password }) => {
       const cleanUsername = username?.trim().toLowerCase();
       if (!cleanUsername) throw new Error("Username wajib diisi.");
-      const finalId = id || `u-${Date.now()}`;
+      const now = new Date().toISOString();
+      const uid = id || (await createStaffAccount(cleanUsername, password));
       const next = {
-        id: finalId,
+        id: uid,
         username: cleanUsername,
         name: name?.trim() || cleanUsername,
-        role: role || "admin",
-        passwordHash:
-          password && password.length > 0
-            ? await sha256Hex(password)
-            : passwordHash || "",
-        updatedAt: new Date().toISOString(),
+        role: role === "editor" ? "editor" : "admin",
+        updatedAt: now,
       };
-      if (!id) next.createdAt = next.updatedAt;
-      if (!next.passwordHash && !id)
-        throw new Error("Password wajib untuk user baru.");
+      if (!id) next.createdAt = now;
       await saveUser(next);
       return next;
     },
@@ -259,13 +223,6 @@ export function DataProvider({ children }) {
     []
   );
 
-  // --- Reset
-  const resetData = useCallback(async () => {
-    for (const c of initialCategories) await saveCategory(c);
-    for (const v of initialVehicles) await saveVehicle(v);
-    await saveCompany(initialCompanySettings);
-  }, []);
-
   const value = useMemo(
     () => ({
       categories,
@@ -275,8 +232,6 @@ export function DataProvider({ children }) {
       company,
       greeting,
       loading,
-      authStatus,
-      authError,
       firestoreError,
       upsertCategory,
       deleteCategory,
@@ -288,7 +243,6 @@ export function DataProvider({ children }) {
       deleteUser,
       setMessageStatus,
       deleteMessage,
-      resetData,
     }),
     [
       categories,
@@ -298,8 +252,6 @@ export function DataProvider({ children }) {
       company,
       greeting,
       loading,
-      authStatus,
-      authError,
       firestoreError,
       upsertCategory,
       deleteCategory,
@@ -311,7 +263,6 @@ export function DataProvider({ children }) {
       deleteUser,
       setMessageStatus,
       deleteMessage,
-      resetData,
     ]
   );
 

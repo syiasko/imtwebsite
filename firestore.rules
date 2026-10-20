@@ -1,34 +1,70 @@
 rules_version = '2';
 
-// Public read for the showcase site; authenticated write so admin actions
-// require an anonymous Firebase Auth session (the app provisions one
-// automatically via signInAnonymously). Anyone may submit a contact message.
+// Public read for the showcase site. Writes need a staff account: a Firebase
+// Auth email/password login whose users/{uid} profile has role admin or
+// editor. Anonymous sessions get nothing beyond what visitors get.
 //
 // Deploy via: firebase deploy --only firestore:rules
-// or paste into Firebase Console → Firestore → Rules.
 service cloud.firestore {
   match /databases/{database}/documents {
+    function profilePath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+    function hasPasswordLogin() {
+      return request.auth != null
+        && request.auth.token.firebase.sign_in_provider == 'password';
+    }
+    function role() {
+      return get(profilePath()).data.role;
+    }
+    function isStaff() {
+      return hasPasswordLogin() && exists(profilePath())
+        && role() in ['admin', 'editor'];
+    }
+    function isAdmin() {
+      return hasPasswordLogin() && exists(profilePath()) && role() == 'admin';
+    }
+    function optionalString(data, key, max) {
+      return !(key in data) || (data[key] is string && data[key].size() <= max);
+    }
+
     match /categories/{id} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isStaff();
     }
     match /vehicles/{id} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isStaff();
     }
     match /settings/{id} {
+      // company and greeting; both are admin-only screens in the panel.
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
-    match /users/{id} {
-      // Users are admin-only data — no public read.
-      allow read, write: if request.auth != null;
+    match /users/{uid} {
+      allow read: if isAdmin()
+        || (hasPasswordLogin() && request.auth.uid == uid);
+      allow write: if isAdmin();
     }
     match /contact_messages/{id} {
-      // Public visitors may submit a contact message; only authed sessions
-      // can read or modify them after the fact.
-      allow create: if true;
-      allow read, update, delete: if request.auth != null;
+      // Visitors may submit a message, shaped like the contact form.
+      allow create: if request.resource.data.keys().hasOnly(
+            ['name', 'email', 'phone', 'company', 'subject', 'message',
+             'status', 'created_at'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 200
+        && request.resource.data.message is string
+        && request.resource.data.message.size() > 0
+        && request.resource.data.message.size() <= 5000
+        && optionalString(request.resource.data, 'email', 200)
+        && optionalString(request.resource.data, 'phone', 50)
+        && optionalString(request.resource.data, 'company', 200)
+        && optionalString(request.resource.data, 'subject', 300)
+        && request.resource.data.status == 'New'
+        && request.resource.data.created_at == request.time;
+      allow read, update: if isStaff();
+      allow delete: if isAdmin();
     }
   }
 }

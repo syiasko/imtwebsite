@@ -1,12 +1,13 @@
 import { useEffect, useId, useState } from "react";
 import { useData } from "../../context/DataContext";
-import { AccessDenied, isCurrentAdmin } from "../Admin";
+import { AccessDenied, useIsAdmin } from "../Admin";
 
 const DEFAULT_TEXT =
   "Selamat Datang di IMT Karoseri, Mitra Terpercaya Kendaraan Khusus Indonesia";
 
 export default function AdminGreeting() {
-  if (!isCurrentAdmin()) {
+  const isAdmin = useIsAdmin();
+  if (!isAdmin) {
     return (
       <AccessDenied>
         Hanya pengguna dengan role <strong>Admin</strong> yang dapat mengelola

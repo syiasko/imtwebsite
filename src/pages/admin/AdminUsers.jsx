@@ -1,7 +1,8 @@
 import { useId, useMemo, useState } from "react";
 import { useData } from "../../context/DataContext";
+import { authErrorMessage, useAuth } from "../../context/AuthContext";
 import { ConfirmDialog } from "../../components/Modal";
-import { AccessDenied, isCurrentAdmin } from "../Admin";
+import { AccessDenied, useIsAdmin } from "../Admin";
 
 const emptyDraft = {
   id: "",
@@ -12,7 +13,8 @@ const emptyDraft = {
 };
 
 export default function AdminUsers() {
-  if (!isCurrentAdmin()) {
+  const isAdmin = useIsAdmin();
+  if (!isAdmin) {
     return (
       <AccessDenied>
         Hanya pengguna dengan role <strong>Admin</strong> yang dapat
@@ -30,12 +32,9 @@ function AdminUsersInner() {
   const [savingMsg, setSavingMsg] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(null);
   const roleId = useId();
+  const { uid: currentUserId } = useAuth();
 
   const editing = !!draft.id;
-  const currentUserId =
-    typeof window !== "undefined"
-      ? sessionStorage.getItem("imt-admin-user-id")
-      : null;
 
   const startEdit = (u) =>
     setDraft({
@@ -73,8 +72,12 @@ function AdminUsersInner() {
         setError("Password minimal 6 karakter.");
         return;
       }
-      if (editing && draft.password && draft.password.length < 6) {
-        setError("Password baru minimal 6 karakter.");
+      if (!/^[a-z0-9._-]+$/.test(draft.username.trim().toLowerCase())) {
+        setError("Username hanya boleh huruf kecil, angka, titik, garis bawah, dan tanda hubung.");
+        return;
+      }
+      if (editing && draft.id === currentUserId && draft.role !== "admin") {
+        setError("Anda tidak bisa menurunkan role akun sendiri.");
         return;
       }
       await upsertUser(draft);
@@ -82,7 +85,7 @@ function AdminUsersInner() {
       setSavingMsg(editing ? "User diperbarui." : "User ditambahkan.");
       setTimeout(() => setSavingMsg(""), 2500);
     } catch (err) {
-      setError(err.message || "Gagal menyimpan user.");
+      setError(err?.code ? authErrorMessage(err) : err.message || "Gagal menyimpan user.");
     }
   };
 
@@ -194,7 +197,12 @@ function AdminUsersInner() {
           required
           value={draft.username}
           onChange={(v) => setDraft({ ...draft, username: v })}
-          hint="Hanya huruf kecil, angka, dan tanda hubung. Otomatis lowercase."
+          disabled={editing}
+          hint={
+            editing
+              ? "Username tidak bisa diganti setelah akun dibuat."
+              : "Huruf kecil, angka, titik, garis bawah, atau tanda hubung."
+          }
         />
         <Field
           label="Nama Lengkap"
@@ -215,14 +223,22 @@ function AdminUsersInner() {
             <option value="editor">Editor (manage content)</option>
           </select>
         </div>
-        <Field
-          label={editing ? "Password Baru (opsional)" : "Password"}
-          type="password"
-          required={!editing}
-          value={draft.password}
-          onChange={(v) => setDraft({ ...draft, password: v })}
-          hint={editing ? "Kosongkan jika tidak ingin mengganti password." : "Minimal 6 karakter."}
-        />
+        {editing ? (
+          <p className="text-xs text-slate-600">
+            Password hanya bisa diganti oleh pemilik akun lewat tombol Ganti
+            password. Kalau lupa, admin bisa mengatur ulang di Firebase Console
+            (Authentication, Users).
+          </p>
+        ) : (
+          <Field
+            label="Password"
+            type="password"
+            required
+            value={draft.password}
+            onChange={(v) => setDraft({ ...draft, password: v })}
+            hint="Minimal 6 karakter."
+          />
+        )}
 
         {error && (
           <p role="alert" className="text-sm text-red-800 bg-red-50 border border-red-200 px-3 py-2 rounded">
@@ -260,7 +276,7 @@ function AdminUsersInner() {
         title="Hapus Pengguna?"
         description={
           confirmDelete
-            ? `User "${confirmDelete.username}" akan dihapus dan tidak bisa login lagi. Tindakan ini tidak bisa dibatalkan.`
+            ? `User "${confirmDelete.username}" akan dihapus dan tidak bisa masuk panel lagi. Tindakan ini tidak bisa dibatalkan.`
             : ""
         }
         confirmLabel="Hapus"
@@ -272,7 +288,7 @@ function AdminUsersInner() {
   );
 }
 
-function Field({ label, value, onChange, type = "text", required, hint }) {
+function Field({ label, value, onChange, type = "text", required, hint, disabled }) {
   const id = useId();
   return (
     <div>
@@ -286,8 +302,9 @@ function Field({ label, value, onChange, type = "text", required, hint }) {
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
         required={required}
-        autoComplete="off"
-        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600"
+        disabled={disabled}
+        autoComplete={type === "password" ? "new-password" : "off"}
+        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-100 disabled:text-slate-600 focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600"
       />
       {hint && <p className="mt-1 text-xs text-slate-600">{hint}</p>}
     </div>

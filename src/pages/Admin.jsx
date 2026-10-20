@@ -1,42 +1,22 @@
 import { useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useData } from "../context/DataContext";
-import {
-  DEFAULT_ADMIN_PASSWORD,
-  sha256Hex,
-  verifyAdminPassword,
-} from "../firebase/password";
+import { authErrorMessage, useAuth } from "../context/AuthContext";
 
-const SESSION_KEY = "imt-admin-session-v3";
-const SESSION_USER_KEY = "imt-admin-user-id";
-const SESSION_USERNAME_KEY = "imt-admin-username";
-const SESSION_ROLE_KEY = "imt-admin-user-role";
 export const ADMIN_BASE_PATH = "/dapurnyaimt";
 
-export const getCurrentAdminRole = () => {
-  if (typeof window === "undefined") return null;
-  return sessionStorage.getItem(SESSION_ROLE_KEY);
-};
-
-export const isCurrentAdmin = () => getCurrentAdminRole() === "admin";
+export const useIsAdmin = () => useAuth().isAdmin;
 
 export default function Admin() {
-  const [authed, setAuthed] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      sessionStorage.getItem(SESSION_KEY) === "1"
-  );
   const [error, setError] = useState("");
   const [verifying, setVerifying] = useState(false);
+  const { status, username, role, isAdmin, signIn, signOut } = useAuth();
   const {
     categories,
     vehicles,
     users,
     messages,
-    company,
     loading,
-    authStatus,
-    authError,
     firestoreError,
   } = useData();
   const unreadMessages = messages.filter(
@@ -44,60 +24,27 @@ export default function Admin() {
   ).length;
   const { pathname } = useLocation();
 
-  const hasUsers = users.length > 0;
-
   const onLogin = async (e) => {
     e.preventDefault();
     setVerifying(true);
     setError("");
     try {
       const fd = new FormData(e.currentTarget);
-      const username = (fd.get("username") || "").toString().trim().toLowerCase();
+      const name = (fd.get("username") || "").toString().trim().toLowerCase();
       const pwd = (fd.get("password") || "").toString();
-
-      if (hasUsers) {
-        const user = users.find((u) => u.username?.toLowerCase() === username);
-        if (!user) {
-          setError("Username tidak ditemukan.");
-          return;
-        }
-        const inputHash = await sha256Hex(pwd);
-        if (inputHash !== user.passwordHash) {
-          setError("Password salah.");
-          return;
-        }
-        sessionStorage.setItem(SESSION_KEY, "1");
-        sessionStorage.setItem(SESSION_USER_KEY, user.id);
-        sessionStorage.setItem(SESSION_USERNAME_KEY, user.username);
-        sessionStorage.setItem(SESSION_ROLE_KEY, user.role || "admin");
-        setAuthed(true);
-      } else {
-        // Legacy single-password mode (no users yet) — treated as admin.
-        const ok = await verifyAdminPassword(pwd, company.passwordHash);
-        if (!ok) {
-          setError("Password salah.");
-          return;
-        }
-        sessionStorage.setItem(SESSION_KEY, "1");
-        sessionStorage.setItem(SESSION_USER_KEY, "legacy-admin");
-        sessionStorage.setItem(SESSION_USERNAME_KEY, "admin");
-        sessionStorage.setItem(SESSION_ROLE_KEY, "admin");
-        setAuthed(true);
+      if (!/^[a-z0-9._-]+$/.test(name)) {
+        setError("Username atau password salah.");
+        return;
       }
+      await signIn(name, pwd);
+    } catch (err) {
+      setError(authErrorMessage(err));
     } finally {
       setVerifying(false);
     }
   };
 
-  const onLogout = () => {
-    sessionStorage.removeItem(SESSION_KEY);
-    sessionStorage.removeItem(SESSION_USER_KEY);
-    sessionStorage.removeItem(SESSION_USERNAME_KEY);
-    sessionStorage.removeItem(SESSION_ROLE_KEY);
-    setAuthed(false);
-  };
-
-  if (loading) {
+  if (loading || status === "loading") {
     return (
       <p role="status" className="container mx-auto px-4 py-20 text-center text-slate-600">
         Memuat data...
@@ -105,21 +52,28 @@ export default function Admin() {
     );
   }
 
-  if (authStatus === "error") {
+  if (status === "noAccess") {
     return (
-      <div className="container mx-auto px-4 py-20 max-w-xl">
-        <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-900">
-          <h1 className="text-lg font-bold">Firebase belum siap</h1>
-          <p className="mt-2 text-sm">
-            {authError?.message ||
-              "Tidak bisa terkoneksi ke Firebase Auth. Pastikan Anonymous sign-in aktif di Firebase Console."}
+      <div className="container mx-auto px-4 py-16 max-w-md">
+        <div role="alert" className="bg-white rounded-2xl border border-slate-200 p-8">
+          <h1 className="text-xl font-bold text-slate-900">Akun tidak punya akses</h1>
+          <p className="mt-2 text-sm text-slate-600">
+            Akun ini sudah tidak terdaftar sebagai pengguna panel. Hubungi
+            admin untuk mengaktifkannya lagi.
           </p>
+          <button
+            type="button"
+            onClick={signOut}
+            className="mt-6 px-5 py-2.5 rounded-lg bg-slate-900 hover:bg-slate-700 text-white font-semibold"
+          >
+            Logout
+          </button>
         </div>
       </div>
     );
   }
 
-  if (!authed) {
+  if (status !== "signedIn") {
     return (
       <div className="container mx-auto px-4 py-16 max-w-md">
         <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
@@ -129,22 +83,21 @@ export default function Admin() {
             website.
           </p>
           <form onSubmit={onLogin} className="mt-6 space-y-4">
-            {hasUsers && (
-              <div>
-                <label htmlFor="login-username" className="block text-sm font-medium text-slate-700 mb-1">
-                  Username
-                </label>
-                <input
-                  id="login-username"
-                  type="text"
-                  name="username"
-                  autoFocus
-                  autoComplete="username"
-                  required
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600"
-                />
-              </div>
-            )}
+            <div>
+              <label htmlFor="login-username" className="block text-sm font-medium text-slate-700 mb-1">
+                Username
+              </label>
+              <input
+                id="login-username"
+                type="text"
+                name="username"
+                autoFocus
+                autoComplete="username"
+                autoCapitalize="none"
+                required
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600"
+              />
+            </div>
             <div>
               <label htmlFor="login-password" className="block text-sm font-medium text-slate-700 mb-1">
                 Password
@@ -153,18 +106,10 @@ export default function Admin() {
                 id="login-password"
                 type="password"
                 name="password"
-                autoFocus={!hasUsers}
                 autoComplete="current-password"
                 required
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600"
               />
-              {!hasUsers && !company.passwordHash && (
-                <p className="mt-1 text-xs text-slate-600">
-                  Password default:{" "}
-                  <code className="font-mono">{DEFAULT_ADMIN_PASSWORD}</code>.
-                  Segera buat user via tab Pengguna setelah login.
-                </p>
-              )}
             </div>
             {error && (
               <p role="alert" className="text-sm text-red-800 bg-red-50 border border-red-200 px-3 py-2 rounded">
@@ -199,9 +144,6 @@ export default function Admin() {
 
   const isOverview =
     pathname === ADMIN_BASE_PATH || pathname === `${ADMIN_BASE_PATH}/`;
-  const currentUsername = sessionStorage.getItem(SESSION_USERNAME_KEY);
-  const currentRole = sessionStorage.getItem(SESSION_ROLE_KEY) || "admin";
-  const isAdmin = currentRole === "admin";
 
   return (
     <div className="container mx-auto px-4 py-10">
@@ -213,7 +155,7 @@ export default function Admin() {
           <p className="mt-1 text-sm text-slate-600">
             Login sebagai{" "}
             <span className="font-mono font-semibold text-slate-900">
-              {currentUsername || "admin"}
+              {username}
             </span>{" "}
             <span
               className={`inline-block ml-1 text-xs font-semibold px-2 py-0.5 rounded ${
@@ -222,14 +164,20 @@ export default function Admin() {
                   : "bg-slate-100 text-slate-600"
               }`}
             >
-              {currentRole}
+              {role}
             </span>
             . Data tersimpan di Firestore.
           </p>
         </div>
         <div className="flex gap-2">
+          <NavLink
+            to={`${ADMIN_BASE_PATH}/akun`}
+            className="px-3 py-2 rounded-lg text-sm font-medium border border-slate-300 text-slate-700 hover:bg-slate-50"
+          >
+            Ganti password
+          </NavLink>
           <button
-            onClick={onLogout}
+            onClick={signOut}
             className="px-3 py-2 rounded-lg text-sm font-medium bg-slate-900 text-white hover:bg-slate-700"
           >
             Logout
@@ -294,7 +242,7 @@ export default function Admin() {
 // sit in the tab labels, so they aren't repeated here.
 function Overview() {
   const { categories, vehicles, messages, greeting } = useData();
-  const isAdmin = isCurrentAdmin();
+  const isAdmin = useIsAdmin();
   const unread = messages.filter((m) => (m.status || "New") === "New").length;
 
   return (

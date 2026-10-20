@@ -1,23 +1,18 @@
 import { useEffect, useId, useState } from "react";
 import { useData } from "../../context/DataContext";
-import {
-  DEFAULT_ADMIN_PASSWORD,
-  sha256Hex,
-  verifyAdminPassword,
-} from "../../firebase/password";
-import { AccessDenied, isCurrentAdmin } from "../Admin";
+import { AccessDenied, useIsAdmin } from "../Admin";
 import {
   DEFAULT_MAPS_PLACE_QUERY,
   buildMapsEmbedUrl,
 } from "../../data/initialData";
 
 export default function AdminSettings() {
-  if (!isCurrentAdmin()) {
+  const isAdmin = useIsAdmin();
+  if (!isAdmin) {
     return (
       <AccessDenied>
         Hanya pengguna dengan role <strong>Admin</strong> yang dapat mengubah
-        Company Setting (identitas, kontak, YouTube, Maps, katalog PDF,
-        password). Hubungi administrator untuk perubahan.
+        Company Setting (identitas, kontak, YouTube, Maps, katalog PDF). Hubungi administrator untuk perubahan.
       </AccessDenied>
     );
   }
@@ -343,103 +338,7 @@ function AdminSettingsInner() {
           )}
         </div>
       </form>
-
-      <ChangePasswordCard />
     </div>
-  );
-}
-
-function ChangePasswordCard() {
-  const { company, updateCompany } = useData();
-  const [currentPwd, setCurrentPwd] = useState("");
-  const [newPwd, setNewPwd] = useState("");
-  const [confirmPwd, setConfirmPwd] = useState("");
-  const [msg, setMsg] = useState("");
-  const [err, setErr] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  const onSubmit = async (e) => {
-    e.preventDefault();
-    setMsg("");
-    setErr("");
-    if (newPwd.length < 6) {
-      setErr("Password baru minimal 6 karakter.");
-      return;
-    }
-    if (newPwd !== confirmPwd) {
-      setErr("Konfirmasi password tidak cocok.");
-      return;
-    }
-    const ok = await verifyAdminPassword(currentPwd, company.passwordHash);
-    if (!ok) {
-      setErr("Password lama salah.");
-      return;
-    }
-    setBusy(true);
-    try {
-      const hash = await sha256Hex(newPwd);
-      await updateCompany({ passwordHash: hash });
-      setMsg("Password berhasil diperbarui.");
-      setCurrentPwd("");
-      setNewPwd("");
-      setConfirmPwd("");
-    } catch (e2) {
-      setErr(e2.message || "Gagal menyimpan password.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const usingDefault = !company.passwordHash;
-
-  return (
-    <form
-      onSubmit={onSubmit}
-      className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4 max-w-xl"
-    >
-      <div>
-        <h2 className="text-lg font-bold text-slate-900">Ganti Password Admin</h2>
-        {usingDefault && (
-          <p className="text-xs text-secondary-700 bg-secondary-50 border border-secondary-200 rounded px-3 py-2 mt-2">
-            Saat ini masih memakai password default
-            <code className="font-mono mx-1">{DEFAULT_ADMIN_PASSWORD}</code>.
-            Segera ganti password ini.
-          </p>
-        )}
-      </div>
-      <Field
-        label="Password Lama"
-        type="password"
-        value={currentPwd}
-        onChange={setCurrentPwd}
-        required
-      />
-      <Field
-        label="Password Baru"
-        type="password"
-        value={newPwd}
-        onChange={setNewPwd}
-        required
-      />
-      <Field
-        label="Konfirmasi Password Baru"
-        type="password"
-        value={confirmPwd}
-        onChange={setConfirmPwd}
-        required
-      />
-      <div className="flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={busy}
-          className="px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-semibold disabled:opacity-60"
-        >
-          {busy ? "Menyimpan..." : "Ubah Password"}
-        </button>
-        {msg && <span role="status" className="text-sm text-emerald-800">{msg}</span>}
-        {err && <span role="alert" className="text-sm text-red-700">{err}</span>}
-      </div>
-    </form>
   );
 }
 

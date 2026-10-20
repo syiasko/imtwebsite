@@ -284,8 +284,6 @@ export const initialCompanySettings = {
   // Catalog PDF (data URL or external URL). Empty string => fall back to print catalog.
   catalogPdfUrl: "",
   catalogPdfName: "",
-  // Admin password: empty means default ("imt-admin") is accepted until admin sets one.
-  passwordHash: "",
 };
 
 // Backwards-compat export for any older import sites.

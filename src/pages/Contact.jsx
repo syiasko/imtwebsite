@@ -139,6 +139,7 @@ export default function Contact() {
               id="contact-message"
               rows="5"
               required
+              maxLength={5000}
               value={form.message}
               onChange={(e) => update("message", e.target.value)}
               placeholder={t("contact.form.messagePlaceholder")}

@@ -3,7 +3,6 @@ import {
   collection,
   doc,
   deleteDoc,
-  getDoc,
   getDocs,
   onSnapshot,
   orderBy,
@@ -11,10 +10,24 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
-  where,
   writeBatch,
 } from "firebase/firestore";
-import { db } from "./config";
+import { initializeApp } from "firebase/app";
+import {
+  connectAuthEmulator,
+  createUserWithEmailAndPassword,
+  getAuth,
+  inMemoryPersistence,
+  setPersistence,
+  signOut,
+} from "firebase/auth";
+import {
+  AUTH_EMULATOR_URL,
+  USE_EMULATORS,
+  db,
+  firebaseConfig,
+  staffEmail,
+} from "./config";
 
 const CATEGORIES = "categories";
 const VEHICLES = "vehicles";
@@ -112,19 +125,33 @@ export const saveUser = (user) =>
 
 export const deleteUserDoc = (id) => deleteDoc(doc(db, USERS, id));
 
-export const findUserByUsername = async (username) => {
-  const q = query(
-    collection(db, USERS),
-    where("username", "==", username.toLowerCase())
+export const subscribeUserProfile = (uid, cb, onError) =>
+  onSnapshot(
+    doc(db, USERS, uid),
+    (snap) => cb(snap.exists() ? { id: snap.id, ...snap.data() } : null),
+    (err) => onError?.(err)
   );
-  const snap = await getDocs(q);
-  const first = snap.docs[0];
-  return first ? { id: first.id, ...first.data() } : null;
-};
 
-export const usersExist = async () => {
-  const snap = await getDocs(collection(db, USERS));
-  return !snap.empty;
+// Creating an account with the client SDK signs in as that account, so it is
+// done on a separate app instance to keep the current admin logged in.
+let provisioningAuth = null;
+export const createStaffAccount = async (username, password) => {
+  if (!provisioningAuth) {
+    provisioningAuth = getAuth(initializeApp(firebaseConfig, "staff-provisioning"));
+    if (USE_EMULATORS) {
+      connectAuthEmulator(provisioningAuth, AUTH_EMULATOR_URL, {
+        disableWarnings: true,
+      });
+    }
+    await setPersistence(provisioningAuth, inMemoryPersistence);
+  }
+  const cred = await createUserWithEmailAndPassword(
+    provisioningAuth,
+    staffEmail(username),
+    password
+  );
+  await signOut(provisioningAuth);
+  return cred.user.uid;
 };
 
 // --- Contact messages ----------------------------------------------------
@@ -163,16 +190,3 @@ export const updateContactMessageStatus = (id, status) =>
 
 export const deleteContactMessage = (id) =>
   deleteDoc(doc(db, CONTACT_MESSAGES, id));
-
-// --- Initial seed --------------------------------------------------------
-export const seedIfEmpty = async ({ categories, vehicles, company }) => {
-  const companySnap = await getDoc(doc(db, SETTINGS, COMPANY_DOC));
-  if (companySnap.exists()) return false;
-
-  const batch = writeBatch(db);
-  categories.forEach((c) => batch.set(doc(db, CATEGORIES, c.id), c));
-  vehicles.forEach((v) => batch.set(doc(db, VEHICLES, v.id), v));
-  batch.set(doc(db, SETTINGS, COMPANY_DOC), company);
-  await batch.commit();
-  return true;
-};

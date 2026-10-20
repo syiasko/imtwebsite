@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../../context/DataContext";
 import { useToast } from "../../context/ToastContext";
 import { ConfirmDialog } from "../../components/Modal";
-import { isCurrentAdmin } from "../Admin";
+import { useIsAdmin } from "../Admin";
 
 const STATUS_NEW = "New";
 const STATUS_READ = "Read";
@@ -74,7 +74,7 @@ export default function AdminMessages() {
   const [filter, setFilter] = useState("all");
   const [openId, setOpenId] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
-  const isAdmin = isCurrentAdmin();
+  const isAdmin = useIsAdmin();
   const detailRef = useRef(null);
 
   // On narrow screens the detail panel sits below the (long) list, so bring
