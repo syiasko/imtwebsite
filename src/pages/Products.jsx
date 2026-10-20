@@ -3,10 +3,13 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useData } from "../context/DataContext";
 import { useT } from "../context/LanguageContext";
 import VehicleCard from "../components/VehicleCard";
+import SearchIcon from "../components/SearchIcon";
+import { useLoadState } from "../components/LoadState";
 
 export default function Products() {
   const { categories, vehicles } = useData();
   const { t } = useT();
+  const loadState = useLoadState();
   const { slug } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState(searchParams.get("q") || "");
@@ -51,12 +54,7 @@ export default function Products() {
     <div className="container mx-auto px-4 py-12">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-primary-700">
-            {activeCategory
-              ? t("products.eyebrow.category")
-              : t("products.eyebrow.all")}
-          </p>
-          <h1 className="mt-1 text-3xl md:text-4xl font-bold text-slate-900">
+          <h1 className="text-3xl md:text-4xl font-bold text-slate-900">
             {activeCategory ? activeCategory.name : t("products.titleAll")}
           </h1>
           {activeCategory?.description && (
@@ -71,10 +69,11 @@ export default function Products() {
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
             placeholder={t("products.searchPlaceholder")}
+            aria-label={t("products.searchAria")}
             className="w-full md:w-72 rounded-lg border border-slate-300 px-4 py-2.5 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600"
           />
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-            🔍
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+            <SearchIcon />
           </span>
         </div>
       </div>
@@ -95,9 +94,24 @@ export default function Products() {
       </div>
 
       <div className="mt-8">
-        {filtered.length === 0 ? (
-          <div className="rounded-2xl border-2 border-dashed border-slate-200 p-12 text-center text-slate-500">
-            {t("products.empty")}
+        {loadState ? (
+          loadState
+        ) : filtered.length === 0 ? (
+          <div className="rounded-2xl border-2 border-dashed border-slate-300 p-8 md:p-12 text-center text-slate-600">
+            {query.trim() ? (
+              <>
+                <p>{t("products.emptyQuery", { query: query.trim() })}</p>
+                <button
+                  type="button"
+                  onClick={() => onQueryChange("")}
+                  className="mt-4 px-5 py-2.5 rounded-lg border border-slate-300 bg-white text-slate-700 font-semibold hover:bg-slate-50"
+                >
+                  {t("products.clearSearch")}
+                </button>
+              </>
+            ) : (
+              <p>{t("products.emptyCategory")}</p>
+            )}
           </div>
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

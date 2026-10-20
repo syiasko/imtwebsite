@@ -71,8 +71,8 @@ export default function CatalogDownloadButton({
           {hasPdf ? t("catalog.confirmDesc") : t("catalog.noPdf")}
         </p>
         {hasPdf && company.catalogPdfName && (
-          <p className="mt-3 text-xs text-slate-500">
-            📄 {company.catalogPdfName}
+          <p className="mt-3 text-xs text-slate-600">
+            {company.catalogPdfName}
           </p>
         )}
       </Modal>

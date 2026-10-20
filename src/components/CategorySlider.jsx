@@ -2,15 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useT } from "../context/LanguageContext";
 
-const CATEGORY_ICONS = {
-  pemadam: "🚒",
-  ambulance: "🚑",
-  "golf-car": "⛳",
-  rantis: "🛡️",
-  "food-truck": "🍔",
-  satelit: "📡",
-};
-
 export default function CategorySlider({ categories, vehicles }) {
   const { t } = useT();
   const scrollRef = useRef(null);
@@ -27,12 +18,17 @@ export default function CategorySlider({ categories, vehicles }) {
     });
     const cards = Array.from(el.children);
     if (cards.length === 0) return;
-    const center = el.scrollLeft + el.clientWidth / 2;
+    // Cards snap to the left edge (snap-start, see scrollToIndex), so the
+    // active card is the one aligned there; at the end of the track the last
+    // cards can't reach the left edge, so treat max scroll as the last card.
+    if (max > 0 && el.scrollLeft >= max) {
+      setActiveIndex(cards.length - 1);
+      return;
+    }
     let closestIdx = 0;
     let closestDist = Infinity;
     cards.forEach((c, i) => {
-      const cardCenter = c.offsetLeft + c.offsetWidth / 2;
-      const dist = Math.abs(cardCenter - center);
+      const dist = Math.abs(c.offsetLeft - cards[0].offsetLeft - el.scrollLeft);
       if (dist < closestDist) {
         closestDist = dist;
         closestIdx = i;
@@ -53,8 +49,9 @@ export default function CategorySlider({ categories, vehicles }) {
     if (!el) return;
     const card = el.children[i];
     if (!card) return;
+    // Measure from the first card so the track's left padding stays visible.
     el.scrollTo({
-      left: card.offsetLeft - el.offsetLeft,
+      left: card.offsetLeft - el.children[0].offsetLeft,
       behavior: "smooth",
     });
   };
@@ -75,39 +72,41 @@ export default function CategorySlider({ categories, vehicles }) {
       <div
         ref={scrollRef}
         onScroll={recompute}
-        className="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-4 -mx-4 px-4 no-scrollbar"
+        className="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth scroll-pl-4 pb-4 -mx-4 px-4 no-scrollbar"
       >
         {categories.map((c) => {
-          const count = vehicles.filter((v) => v.categoryId === c.id).length;
-          const icon = CATEGORY_ICONS[c.id] || "🚛";
+          const items = vehicles.filter((v) => v.categoryId === c.id);
+          // Show a real unit photo from this category rather than an icon.
+          const cover = items.find((v) => v.images?.length > 0)?.images[0];
           return (
             <Link
               key={c.id}
               to={`/produk/kategori/${c.slug}`}
               className="group relative flex-shrink-0 snap-start w-[85%] sm:w-[55%] md:w-[42%] lg:w-[32%] xl:w-[26%]"
             >
-              <div className="h-full p-6 rounded-2xl bg-white border border-slate-200 hover:border-primary-300 hover:shadow-xl transition flex flex-col">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="h-12 w-12 rounded-xl bg-primary-50 grid place-items-center text-2xl">
-                    {icon}
+              <div className="h-full rounded-2xl bg-white border border-slate-200 hover:border-primary-300 hover:shadow-md transition flex flex-col overflow-hidden">
+                {cover && (
+                  <img
+                    src={cover}
+                    alt=""
+                    className="w-full aspect-[16/9] object-cover"
+                  />
+                )}
+                <div className="p-6 flex flex-col flex-1">
+                  <h3 className="text-xl font-bold text-slate-900 group-hover:text-primary-700">
+                    {c.name}
+                  </h3>
+                  <p className="mt-2 text-sm text-slate-600 flex-1 line-clamp-3">
+                    {c.description}
+                  </p>
+                  <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between text-sm">
+                    <span className="text-slate-600">
+                      {t("section.unitsAvailable", { count: items.length })}
+                    </span>
+                    <span className="font-semibold text-primary-700 group-hover:underline">
+                      {t("products.viewDetail")}
+                    </span>
                   </div>
-                  <span className="text-secondary-500 text-2xl group-hover:translate-x-1 transition">
-                    →
-                  </span>
-                </div>
-                <h3 className="mt-5 text-xl font-bold text-slate-900 group-hover:text-primary-700">
-                  {c.name}
-                </h3>
-                <p className="mt-2 text-sm text-slate-600 flex-1 line-clamp-3">
-                  {c.description}
-                </p>
-                <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between text-xs">
-                  <span className="font-semibold uppercase tracking-wide text-slate-400">
-                    {t("section.unitsAvailable", { count })}
-                  </span>
-                  <span className="font-semibold text-primary-700 group-hover:underline">
-                    {t("products.viewDetail")}
-                  </span>
                 </div>
               </div>
             </Link>
@@ -134,7 +133,7 @@ export default function CategorySlider({ categories, vehicles }) {
         type="button"
         onClick={prev}
         disabled={!overflow.left}
-        aria-label="Sebelumnya"
+        aria-label={t("common.prev")}
         className="hidden md:grid absolute -left-3 top-1/2 -translate-y-1/2 h-11 w-11 place-items-center rounded-full bg-white border border-slate-200 shadow-md text-slate-700 hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-0 disabled:pointer-events-none transition"
       >
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -145,7 +144,7 @@ export default function CategorySlider({ categories, vehicles }) {
         type="button"
         onClick={next}
         disabled={!overflow.right}
-        aria-label="Berikutnya"
+        aria-label={t("common.next")}
         className="hidden md:grid absolute -right-3 top-1/2 -translate-y-1/2 h-11 w-11 place-items-center rounded-full bg-white border border-slate-200 shadow-md text-slate-700 hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-0 disabled:pointer-events-none transition"
       >
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -154,19 +153,24 @@ export default function CategorySlider({ categories, vehicles }) {
       </button>
 
       {/* Dots */}
-      <div className="mt-4 flex items-center justify-center gap-1.5">
+      <div className="mt-2 flex items-center justify-center">
         {categories.map((c, i) => (
           <button
             key={c.id}
             type="button"
             onClick={() => scrollToIndex(i)}
-            aria-label={`Slide ${i + 1}: ${c.name}`}
-            className={`h-2 rounded-full transition-all ${
-              i === activeIndex
-                ? "w-7 bg-primary-600"
-                : "w-2 bg-slate-300 hover:bg-slate-400"
-            }`}
-          />
+            aria-label={t("section.categorySlide", { index: i + 1, name: c.name })}
+            aria-current={i === activeIndex ? "true" : undefined}
+            className="h-11 px-1 grid place-items-center"
+          >
+            <span
+              className={`h-2 rounded-full transition-all ${
+                i === activeIndex
+                  ? "w-7 bg-primary-600"
+                  : "w-2 bg-slate-500 hover:bg-slate-600"
+              }`}
+            />
+          </button>
         ))}
       </div>
     </div>

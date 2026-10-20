@@ -1,12 +1,12 @@
 import { useT } from "../context/LanguageContext";
 
 const FLAGS = {
-  id: { code: "ID", emoji: "🇮🇩", label: "Bahasa Indonesia" },
-  en: { code: "EN", emoji: "🇬🇧", label: "English" },
+  id: { code: "ID", label: "Bahasa Indonesia" },
+  en: { code: "EN", label: "English" },
 };
 
 export default function LanguageToggle({ compact = false }) {
-  const { lang, setLang, supported } = useT();
+  const { lang, setLang, supported, t } = useT();
 
   return (
     <div
@@ -14,7 +14,7 @@ export default function LanguageToggle({ compact = false }) {
         compact ? "scale-95" : ""
       }`}
       role="group"
-      aria-label="Language switcher"
+      aria-label={t("lang.label")}
     >
       {supported.map((code) => {
         const active = lang === code;
@@ -26,14 +26,14 @@ export default function LanguageToggle({ compact = false }) {
             onClick={() => setLang(code)}
             aria-pressed={active}
             title={f.label}
-            className={`flex items-center gap-1.5 px-3 py-1.5 transition ${
+            aria-label={f.label}
+            className={`flex items-center h-11 px-4 transition ${
               active
                 ? "bg-primary-600 text-white"
                 : "text-slate-700 hover:bg-slate-50"
             }`}
           >
-            <span aria-hidden="true">{f.emoji}</span>
-            <span className="font-semibold tracking-wide">{f.code}</span>
+            <span className="font-semibold">{f.code}</span>
           </button>
         );
       })}

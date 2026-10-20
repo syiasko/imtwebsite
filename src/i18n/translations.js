@@ -14,49 +14,52 @@ export const translations = {
     "nav.searchPlaceholder": "Cari kendaraan...",
     "nav.searchAria": "Cari kendaraan",
     "nav.menu": "Buka menu",
+    "nav.closeMenu": "Tutup menu",
+    "nav.tagline": "Produsen kendaraan khusus",
 
-    "hero.eyebrow": "Karoseri Custom Built",
+    "common.loading": "Memuat data unit...",
+    "common.loadError":
+      "Data unit gagal dimuat. Periksa koneksi internet Anda lalu muat ulang halaman.",
+    "common.reload": "Muat ulang",
+    "common.prev": "Sebelumnya",
+    "common.next": "Berikutnya",
+
     "hero.title": "Kendaraan Khusus, Dibangun Presisi untuk Misi Anda.",
     "hero.subtitle":
-      "Dari ambulance standar Internasional, mobil pemadam, mobil alat berat, food truck hingga mobil pelayanan publik — {brand} merancang & memproduksi sesuai kebutuhan operasional Anda.",
+      "Ambulance standar internasional, mobil pemadam, mobil alat berat, food truck, dan mobil pelayanan publik. {brand} merancang dan memproduksinya sesuai kebutuhan operasional Anda.",
     "hero.ctaProducts": "Lihat Semua Produk",
     "hero.ctaCatalog": "Download Katalog",
-    "hero.statUnits": "Unit dirancang",
-    "hero.statCategories": "Kategori produk",
-    "hero.statExperience": "Tahun pengalaman",
 
-    "section.categoriesEyebrow": "Kategori",
     "section.categoriesTitle": "Lini Produk Karoseri",
     "section.categoriesSubtitle":
       "Setiap unit dapat dikustomisasi sesuai standar operasional dan branding klien.",
     "section.unitsAvailable": "{count} unit tersedia",
+    "section.categorySlide": "Kategori {index}: {name}",
 
-    "section.showcaseEyebrow": "Showcase",
     "section.showcaseTitle": "Unit Unggulan",
     "section.showcaseSubtitle":
       "Beberapa unit yang sering kami produksi. Klik untuk melihat spesifikasi lengkap.",
-    "section.allProducts": "Semua produk →",
+    "section.allProducts": "Lihat semua produk",
 
     "cta.customTitle": "Butuh konfigurasi khusus?",
     "cta.customDesc":
       "Tim engineering kami siap mendampingi dari konsep, desain CAD, prototyping, hingga uji homologasi. Sampaikan kebutuhan Anda dan kami akan menyiapkan proposal teknis & komersial.",
     "cta.consult": "Konsultasi Sekarang",
 
-    "youtube.eyebrow": "YouTube",
     "youtube.defaultTitle": "Lihat Karya Kami di YouTube",
-    "youtube.fallback":
-      "URL channel YouTube tidak bisa di-embed langsung. Buka channel di YouTube atau set URL video tertentu via Admin → Pengaturan.",
-    "youtube.openChannel": "▶ Buka Channel di YouTube",
-    "youtube.notConfigured": "URL video YouTube belum dikonfigurasi.",
+    "youtube.fallback": "Tonton video unit kami di channel YouTube.",
+    "youtube.openChannel": "Buka Channel YouTube",
 
-    "products.eyebrow.category": "Kategori",
-    "products.eyebrow.all": "Katalog Produk",
     "products.titleAll": "Semua Kendaraan",
-    "products.empty": "Tidak ada unit yang cocok dengan pencarian.",
+    "products.searchAria": "Cari unit",
+    "products.emptyQuery": 'Tidak ada unit yang cocok dengan "{query}".',
+    "products.emptyCategory": "Belum ada unit di kategori ini.",
+    "products.clearSearch": "Hapus pencarian",
     "products.featuresCount": "{count} fitur unggulan",
-    "products.viewDetail": "Lihat detail →",
+    "products.viewDetail": "Lihat detail",
     "products.filterAll": "Semua",
     "products.searchPlaceholder": "Cari unit...",
+    "products.noPhoto": "Foto belum tersedia",
 
     "detail.notFoundTitle": "Unit tidak ditemukan",
     "detail.notFoundDesc": "Unit yang Anda cari mungkin sudah dihapus atau tidak tersedia.",
@@ -65,11 +68,23 @@ export const translations = {
     "detail.specsHeading": "Spesifikasi Teknis",
     "detail.specsNote":
       "Spesifikasi dapat berubah sewaktu-waktu sesuai konfigurasi pesanan.",
+    "detail.specsEmpty": "Spesifikasi belum tersedia.",
     "detail.relatedHeading": "Unit lainnya di kategori ini",
-    "detail.whatsapp": "💬 Konsultasi via WhatsApp",
+    "detail.whatsapp": "Konsultasi via WhatsApp",
     "detail.downloadCatalog": "Download Katalog",
     "detail.waMessage":
       'Halo {brand}, saya tertarik dengan unit "{vehicle}". Mohon informasinya.',
+
+    "slideshow.noImage": "Belum ada gambar",
+    "slideshow.zoomHint": "Klik untuk perbesar",
+    "slideshow.open": "Buka pratinjau gambar",
+    "slideshow.preview": "Pratinjau gambar",
+    "slideshow.close": "Tutup",
+    "slideshow.thumb": "Tampilkan gambar {index}",
+
+    "map.title": "Lokasi kami di Google Maps",
+    "map.hint": "Buka langsung di Google Maps",
+    "map.open": "Buka peta",
 
     "catalog.confirmTitle": "Download Katalog",
     "catalog.confirmDesc":
@@ -80,16 +95,15 @@ export const translations = {
       "Belum ada katalog PDF. Akan dibuka halaman katalog cetak sebagai gantinya.",
     "catalog.openPrint": "Buka Halaman Cetak",
 
-    "contact.eyebrow": "Kontak",
     "contact.title": "Hubungi Tim {brand}",
     "contact.subtitle":
-      "Sampaikan kebutuhan Anda — tim sales & engineering kami akan membalas secepatnya.",
+      "Sampaikan kebutuhan Anda. Tim sales dan engineering kami akan membalas secepatnya.",
     "contact.companyName": "Nama Perusahaan",
     "contact.address": "Alamat",
     "contact.phone": "Telepon / WhatsApp",
     "contact.email": "Email",
     "contact.hours": "Jam Operasional",
-    "contact.waButton": "💬 Chat WhatsApp Sekarang",
+    "contact.waButton": "Chat via WhatsApp",
     "contact.form.name": "Nama Lengkap",
     "contact.form.email": "Email",
     "contact.form.phone": "No. Telepon",
@@ -98,12 +112,15 @@ export const translations = {
     "contact.form.message": "Pesan",
     "contact.form.messagePlaceholder": "Ceritakan kebutuhan unit Anda...",
     "contact.form.submit": "Kirim Pesan",
+    "contact.sending": "Mengirim...",
+    "contact.sendError":
+      "Pesan gagal terkirim. Coba lagi, atau hubungi kami langsung via WhatsApp.",
     "contact.confirm.title": "Kirim Pesan?",
     "contact.confirm.desc":
       "Pesan akan dikirim ke tim kami dan akan dibalas via email secepatnya.",
     "contact.confirm.yes": "Ya, Kirim",
     "contact.confirm.no": "Batal",
-    "contact.success.title": "Pesan Terkirim!",
+    "contact.success.title": "Pesan Terkirim",
     "contact.success.desc":
       "Terima kasih, pesan Anda sudah kami terima. Tim kami akan menghubungi Anda lewat email pada jam kerja.",
     "contact.success.close": "Tutup",
@@ -111,8 +128,7 @@ export const translations = {
     "footer.aboutHeading": "Tentang",
     "footer.contactHeading": "Hubungi Kami",
     "footer.locationHeading": "Lokasi Workshop",
-    "footer.copyright": "© {year} {company}. All rights reserved.",
-    "footer.poweredBy": "Powered by Firebase & Vercel.",
+    "footer.copyright": "© {year} {company}. Hak cipta dilindungi.",
 
     "404.title": "Halaman tidak ditemukan",
     "404.desc": "URL yang Anda buka mungkin sudah berubah atau dihapus.",
@@ -129,49 +145,52 @@ export const translations = {
     "nav.searchPlaceholder": "Search vehicles...",
     "nav.searchAria": "Search vehicles",
     "nav.menu": "Open menu",
+    "nav.closeMenu": "Close menu",
+    "nav.tagline": "Special vehicle manufacturer",
 
-    "hero.eyebrow": "Custom Built Karoseri",
+    "common.loading": "Loading units...",
+    "common.loadError":
+      "We couldn't load the units. Check your internet connection and reload the page.",
+    "common.reload": "Reload",
+    "common.prev": "Previous",
+    "common.next": "Next",
+
     "hero.title": "Special-purpose Vehicles, Engineered for Your Mission.",
     "hero.subtitle":
-      "From international standard ambulances, fire trucks, heavy-duty vehicles, and food trucks to public service vehicles — {brand} designs and builds to your operational needs.",
+      "International-standard ambulances, fire trucks, heavy-duty vehicles, food trucks, and public service vehicles. {brand} designs and builds each one to your operational needs.",
     "hero.ctaProducts": "View All Products",
     "hero.ctaCatalog": "Download Catalog",
-    "hero.statUnits": "Units delivered",
-    "hero.statCategories": "Product categories",
-    "hero.statExperience": "Years of experience",
 
-    "section.categoriesEyebrow": "Categories",
     "section.categoriesTitle": "Our Product Lines",
     "section.categoriesSubtitle":
       "Every unit is customizable to your operational standards and branding.",
     "section.unitsAvailable": "{count} units available",
+    "section.categorySlide": "Category {index}: {name}",
 
-    "section.showcaseEyebrow": "Showcase",
     "section.showcaseTitle": "Featured Units",
     "section.showcaseSubtitle":
       "A selection of units we frequently produce. Click to see full specs.",
-    "section.allProducts": "All products →",
+    "section.allProducts": "See all products",
 
     "cta.customTitle": "Need a custom configuration?",
     "cta.customDesc":
       "Our engineering team supports you from concept and CAD design to prototyping and homologation. Tell us your needs and we'll prepare a technical & commercial proposal.",
     "cta.consult": "Talk to Us",
 
-    "youtube.eyebrow": "YouTube",
     "youtube.defaultTitle": "Watch Our Work on YouTube",
-    "youtube.fallback":
-      "YouTube channel URLs cannot be embedded directly. Open the channel on YouTube or set a specific video URL via Admin → Settings.",
-    "youtube.openChannel": "▶ Open Channel on YouTube",
-    "youtube.notConfigured": "YouTube video URL is not configured yet.",
+    "youtube.fallback": "Watch videos of our units on our YouTube channel.",
+    "youtube.openChannel": "Open YouTube Channel",
 
-    "products.eyebrow.category": "Category",
-    "products.eyebrow.all": "Product Catalog",
     "products.titleAll": "All Vehicles",
-    "products.empty": "No units match your search.",
+    "products.searchAria": "Search units",
+    "products.emptyQuery": 'No units match "{query}".',
+    "products.emptyCategory": "There are no units in this category yet.",
+    "products.clearSearch": "Clear search",
     "products.featuresCount": "{count} key features",
-    "products.viewDetail": "View detail →",
+    "products.viewDetail": "View details",
     "products.filterAll": "All",
     "products.searchPlaceholder": "Search units...",
+    "products.noPhoto": "No photo yet",
 
     "detail.notFoundTitle": "Unit not found",
     "detail.notFoundDesc":
@@ -181,11 +200,23 @@ export const translations = {
     "detail.specsHeading": "Technical Specifications",
     "detail.specsNote":
       "Specifications may change depending on order configuration.",
+    "detail.specsEmpty": "Specifications are not available yet.",
     "detail.relatedHeading": "Other units in this category",
-    "detail.whatsapp": "💬 Chat on WhatsApp",
+    "detail.whatsapp": "Ask via WhatsApp",
     "detail.downloadCatalog": "Download Catalog",
     "detail.waMessage":
       'Hello {brand}, I am interested in the "{vehicle}" unit. Could I get more information?',
+
+    "slideshow.noImage": "No images yet",
+    "slideshow.zoomHint": "Click to enlarge",
+    "slideshow.open": "Open image preview",
+    "slideshow.preview": "Image preview",
+    "slideshow.close": "Close",
+    "slideshow.thumb": "Show image {index}",
+
+    "map.title": "Our location on Google Maps",
+    "map.hint": "Open directly in Google Maps",
+    "map.open": "Open map",
 
     "catalog.confirmTitle": "Download Catalog",
     "catalog.confirmDesc":
@@ -196,16 +227,15 @@ export const translations = {
       "No PDF catalog is set yet. We'll open the printable catalog page instead.",
     "catalog.openPrint": "Open Printable Page",
 
-    "contact.eyebrow": "Contact",
     "contact.title": "Get in touch with {brand}",
     "contact.subtitle":
-      "Tell us your needs — our sales & engineering team will get back to you shortly.",
+      "Tell us what you need. Our sales and engineering team will reply as soon as they can.",
     "contact.companyName": "Company Name",
     "contact.address": "Address",
     "contact.phone": "Phone / WhatsApp",
     "contact.email": "Email",
     "contact.hours": "Office Hours",
-    "contact.waButton": "💬 Chat on WhatsApp",
+    "contact.waButton": "Chat on WhatsApp",
     "contact.form.name": "Full Name",
     "contact.form.email": "Email",
     "contact.form.phone": "Phone Number",
@@ -214,21 +244,23 @@ export const translations = {
     "contact.form.message": "Message",
     "contact.form.messagePlaceholder": "Describe your unit requirements...",
     "contact.form.submit": "Send Message",
+    "contact.sending": "Sending...",
+    "contact.sendError":
+      "Your message wasn't sent. Try again, or reach us directly on WhatsApp.",
     "contact.confirm.title": "Send Message?",
     "contact.confirm.desc":
       "Your message will be sent to our team and we'll reply via email shortly.",
     "contact.confirm.yes": "Yes, Send",
     "contact.confirm.no": "Cancel",
-    "contact.success.title": "Message Sent!",
+    "contact.success.title": "Message Sent",
     "contact.success.desc":
-      "Thank you — your message has been received. Our team will reach out via email during business hours.",
+      "Thank you, we've received your message. Our team will reply by email during business hours.",
     "contact.success.close": "Close",
 
     "footer.aboutHeading": "About",
     "footer.contactHeading": "Contact Us",
     "footer.locationHeading": "Workshop Location",
     "footer.copyright": "© {year} {company}. All rights reserved.",
-    "footer.poweredBy": "Powered by Firebase & Vercel.",
 
     "404.title": "Page not found",
     "404.desc": "The URL you opened may have changed or been removed.",

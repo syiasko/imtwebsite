@@ -1,23 +1,18 @@
 import { useEffect, useState } from "react";
+import { useT } from "../context/LanguageContext";
 
+// No autoplay: visitors compare photos at their own pace (WCAG 2.2.2).
 export default function Slideshow({ images = [], alt = "" }) {
+  const { t } = useT();
   const [index, setIndex] = useState(0);
   const [lightbox, setLightbox] = useState(false);
   const safe = images.filter(Boolean);
   const total = safe.length;
 
-  useEffect(() => {
-    if (total <= 1 || lightbox) return undefined;
-    const id = setInterval(() => {
-      setIndex((i) => (i + 1) % total);
-    }, 5000);
-    return () => clearInterval(id);
-  }, [total, lightbox]);
-
   if (total === 0) {
     return (
-      <div className="aspect-[16/9] rounded-2xl bg-slate-100 grid place-items-center text-slate-400">
-        Belum ada gambar
+      <div className="aspect-[16/9] rounded-2xl bg-slate-100 grid place-items-center text-slate-600">
+        {t("slideshow.noImage")}
       </div>
     );
   }
@@ -29,8 +24,8 @@ export default function Slideshow({ images = [], alt = "" }) {
       <button
         type="button"
         onClick={() => setLightbox(true)}
-        aria-label="Buka pratinjau gambar"
-        className="block w-full aspect-[16/9] rounded-2xl overflow-hidden bg-slate-900 shadow-lg cursor-zoom-in relative"
+        aria-label={t("slideshow.open")}
+        className="block w-full aspect-[16/9] rounded-2xl overflow-hidden bg-slate-900 cursor-zoom-in relative"
       >
         {safe.map((src, i) => (
           <img
@@ -42,9 +37,14 @@ export default function Slideshow({ images = [], alt = "" }) {
             }`}
           />
         ))}
-        <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full bg-black/60 backdrop-blur px-2.5 py-1 text-[11px] font-medium text-white pointer-events-none">
-          🔍 Klik untuk perbesar
+        <span className="absolute bottom-3 right-3 rounded-full bg-black/75 px-2.5 py-1 text-xs font-medium text-white pointer-events-none">
+          {t("slideshow.zoomHint")}
         </span>
+        {total > 1 && (
+          <span className="absolute bottom-3 left-3 rounded-full bg-black/75 px-2.5 py-1 text-xs font-medium text-white pointer-events-none">
+            {index + 1} / {total}
+          </span>
+        )}
       </button>
 
       {total > 1 && (
@@ -52,35 +52,19 @@ export default function Slideshow({ images = [], alt = "" }) {
           <button
             type="button"
             onClick={() => go(-1)}
-            aria-label="Sebelumnya"
-            className="absolute left-3 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-white/80 hover:bg-white text-slate-900 shadow grid place-items-center"
+            aria-label={t("common.prev")}
+            className="absolute left-3 top-1/2 -translate-y-1/2 h-11 w-11 rounded-full bg-white/90 hover:bg-white text-slate-900 text-2xl shadow grid place-items-center"
           >
             ‹
           </button>
           <button
             type="button"
             onClick={() => go(1)}
-            aria-label="Berikutnya"
-            className="absolute right-3 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-white/80 hover:bg-white text-slate-900 shadow grid place-items-center"
+            aria-label={t("common.next")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 h-11 w-11 rounded-full bg-white/90 hover:bg-white text-slate-900 text-2xl shadow grid place-items-center"
           >
             ›
           </button>
-
-          <div className="absolute bottom-3 left-3 flex gap-2">
-            {safe.map((_, i) => (
-              <button
-                key={i}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIndex(i);
-                }}
-                aria-label={`Slide ${i + 1}`}
-                className={`h-2 rounded-full transition-all ${
-                  i === index ? "w-6 bg-white" : "w-2 bg-white/60"
-                }`}
-              />
-            ))}
-          </div>
         </>
       )}
 
@@ -91,6 +75,8 @@ export default function Slideshow({ images = [], alt = "" }) {
               key={i}
               type="button"
               onClick={() => setIndex(i)}
+              aria-label={t("slideshow.thumb", { index: i + 1 })}
+              aria-current={i === index ? "true" : undefined}
               className={`aspect-[4/3] rounded-lg overflow-hidden border-2 transition ${
                 i === index
                   ? "border-primary-600"
@@ -117,6 +103,7 @@ export default function Slideshow({ images = [], alt = "" }) {
 }
 
 function Lightbox({ images, index, setIndex, alt, onClose }) {
+  const { t } = useT();
   const total = images.length;
 
   useEffect(() => {
@@ -139,13 +126,14 @@ function Lightbox({ images, index, setIndex, alt, onClose }) {
       className="fixed inset-0 z-[60] bg-black/95 grid place-items-center p-4 animate-[toast-in_.15s_ease-out]"
       role="dialog"
       aria-modal="true"
-      aria-label="Pratinjau gambar"
+      aria-label={t("slideshow.preview")}
       onClick={onClose}
     >
       <button
         type="button"
         onClick={onClose}
-        aria-label="Tutup"
+        aria-label={t("slideshow.close")}
+        autoFocus
         className="absolute top-4 right-4 h-11 w-11 rounded-full bg-white/10 hover:bg-white/20 text-white text-2xl grid place-items-center"
       >
         ×
@@ -159,7 +147,7 @@ function Lightbox({ images, index, setIndex, alt, onClose }) {
               e.stopPropagation();
               setIndex((i) => (i - 1 + total) % total);
             }}
-            aria-label="Sebelumnya"
+            aria-label={t("common.prev")}
             className="absolute left-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-white/10 hover:bg-white/20 text-white text-3xl grid place-items-center"
           >
             ‹
@@ -170,7 +158,7 @@ function Lightbox({ images, index, setIndex, alt, onClose }) {
               e.stopPropagation();
               setIndex((i) => (i + 1) % total);
             }}
-            aria-label="Berikutnya"
+            aria-label={t("common.next")}
             className="absolute right-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-white/10 hover:bg-white/20 text-white text-3xl grid place-items-center"
           >
             ›

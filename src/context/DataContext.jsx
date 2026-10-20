@@ -47,7 +47,7 @@ export function DataProvider({ children }) {
   const [company, setCompany] = useState(initialCompanySettings);
   const [greeting, setGreeting] = useState({
     isActive: true,
-    text: "Selamat Datang di IMT Karoseri — Mitra Terpercaya Kendaraan Khusus Indonesia",
+    text: "Selamat Datang di IMT Karoseri, Mitra Terpercaya Kendaraan Khusus Indonesia",
     guestGender: "Bapak/Ibu",
     guestName: "",
     guestTitle: "",

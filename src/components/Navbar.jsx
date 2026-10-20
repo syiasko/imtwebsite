@@ -4,6 +4,7 @@ import { useData } from "../context/DataContext";
 import { useT } from "../context/LanguageContext";
 import LanguageToggle from "./LanguageToggle";
 import CatalogDownloadButton from "./CatalogDownloadButton";
+import SearchIcon from "./SearchIcon";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
@@ -42,7 +43,7 @@ export default function Navbar() {
         >
           <img
             src="/logo.png"
-            alt="IMT Karoseri 100"
+            alt="IMT Karoseri"
             className="h-10 w-10 rounded-md object-contain bg-white"
           />
           <div className="leading-tight hidden sm:block">
@@ -55,14 +56,14 @@ export default function Navbar() {
           </div>
         </Link>
 
-        {/* Mobile-only centered title — fills the gap between logo & hamburger
+        {/* Mobile-only centered title: fills the gap between logo & hamburger
             when the logo subtitle (sm:block) is hidden. */}
         <div className="sm:hidden flex-1 text-center min-w-0 px-2">
           <p className="font-bold text-slate-900 text-sm leading-tight truncate">
             PT. Indraprasta Mulia Teknik
           </p>
-          <p className="text-[10px] text-slate-500 leading-tight truncate">
-            special vehicle manufacturer
+          <p className="text-xs text-slate-600 leading-tight truncate">
+            {t("nav.tagline")}
           </p>
         </div>
 
@@ -72,8 +73,8 @@ export default function Navbar() {
           className="hidden md:flex flex-1 max-w-md mx-2"
         >
           <div className="relative w-full">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-              🔍
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+              <SearchIcon />
             </span>
             <input
               type="search"
@@ -104,8 +105,10 @@ export default function Navbar() {
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="md:hidden ml-auto inline-flex items-center justify-center h-9 w-9 rounded-md border border-slate-300"
-          aria-label={t("nav.menu")}
+          className="md:hidden ml-auto inline-flex items-center justify-center h-11 w-11 rounded-md border border-slate-300"
+          aria-label={open ? t("nav.closeMenu") : t("nav.menu")}
+          aria-expanded={open}
+          aria-controls="mobile-menu"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -125,12 +128,12 @@ export default function Navbar() {
       </div>
 
       {open && (
-        <div className="md:hidden border-t border-slate-200 bg-white">
+        <div id="mobile-menu" className="md:hidden border-t border-slate-200 bg-white">
           <div className="container mx-auto px-4 py-3 flex flex-col gap-3">
             <form onSubmit={onSearchSubmit} role="search">
               <div className="relative w-full">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                  🔍
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+                  <SearchIcon />
                 </span>
                 <input
                   type="search"
@@ -150,7 +153,7 @@ export default function Navbar() {
                   end={l.end}
                   onClick={() => setOpen(false)}
                   className={({ isActive }) =>
-                    `py-2 px-2 rounded-md text-sm font-medium ${
+                    `py-3 px-2 rounded-md text-sm font-medium ${
                       isActive
                         ? "text-primary-700 bg-primary-50"
                         : "text-slate-700 hover:bg-slate-100"
@@ -160,8 +163,8 @@ export default function Navbar() {
                   {l.label}
                 </NavLink>
               ))}
-              <div className="py-2">
-                <CatalogDownloadButton className="text-sm font-medium text-primary-700 hover:underline">
+              <div>
+                <CatalogDownloadButton className="w-full text-left py-3 px-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-100">
                   {t("nav.catalog")}
                 </CatalogDownloadButton>
               </div>

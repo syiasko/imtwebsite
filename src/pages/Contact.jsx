@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useData } from "../context/DataContext";
 import { useT } from "../context/LanguageContext";
 import { trackEvent } from "../firebase/config";
@@ -44,9 +44,9 @@ export default function Contact() {
       setStage("success");
     } catch (err) {
       console.error("Failed to save message:", err);
-      setError(err?.message || "Gagal mengirim pesan.");
-      setStage("confirm");
-      toast.error("Gagal mengirim pesan, coba lagi.");
+      setError(t("contact.sendError"));
+      setStage("idle");
+      toast.error(t("contact.sendError"));
     }
   };
 
@@ -57,26 +57,28 @@ export default function Contact() {
 
   return (
     <div className="container mx-auto px-4 py-12">
-      <p className="text-xs font-semibold uppercase tracking-widest text-primary-700">
-        {t("contact.eyebrow")}
-      </p>
-      <h1 className="mt-1 text-3xl md:text-4xl font-bold text-slate-900">
+      <h1 className="text-3xl md:text-4xl font-bold text-slate-900">
         {t("contact.title", { brand: company.shortName || company.name })}
       </h1>
       <p className="mt-2 text-slate-600 max-w-2xl">{t("contact.subtitle")}</p>
 
       <div className="mt-10 grid lg:grid-cols-2 gap-10">
         <div className="space-y-6">
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-5">
+          <dl className="bg-white rounded-2xl border border-slate-200 p-6 space-y-5">
             <InfoRow label={t("contact.companyName")} value={company.name} />
             <InfoRow label={t("contact.address")} value={company.address} />
             <InfoRow
               label={t("contact.phone")}
               value={company.whatsapp || company.phone}
+              href={`tel:${company.whatsapp || company.phone}`}
             />
-            <InfoRow label={t("contact.email")} value={company.email} />
+            <InfoRow
+              label={t("contact.email")}
+              value={company.email}
+              href={`mailto:${company.email}`}
+            />
             <InfoRow label={t("contact.hours")} value={company.hours} />
-          </div>
+          </dl>
 
           {waNumber && (
             <a
@@ -84,7 +86,7 @@ export default function Contact() {
               target="_blank"
               rel="noreferrer"
               onClick={() => trackEvent("whatsapp_click", { source: "contact" })}
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
             >
               {t("contact.waButton")}
             </a>
@@ -129,11 +131,12 @@ export default function Contact() {
             required
           />
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label htmlFor="contact-message" className="block text-sm font-medium text-slate-700 mb-1">
               {t("contact.form.message")}
               <span className="text-primary-600"> *</span>
             </label>
             <textarea
+              id="contact-message"
               rows="5"
               required
               value={form.message}
@@ -143,7 +146,7 @@ export default function Contact() {
             />
           </div>
           {error && (
-            <p className="text-sm text-primary-700 bg-primary-50 px-3 py-2 rounded">
+            <p role="alert" className="text-sm text-red-800 bg-red-50 border border-red-200 px-3 py-2 rounded">
               {error}
             </p>
           )}
@@ -152,7 +155,7 @@ export default function Contact() {
             disabled={stage === "sending"}
             className="w-full px-5 py-3 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-semibold disabled:opacity-60"
           >
-            {stage === "sending" ? "Mengirim..." : t("contact.form.submit")}
+            {stage === "sending" ? t("contact.sending") : t("contact.form.submit")}
           </button>
         </form>
       </div>
@@ -177,7 +180,7 @@ export default function Contact() {
               disabled={stage === "sending"}
               className="px-4 py-2 rounded-lg font-semibold bg-primary-600 hover:bg-primary-700 text-white disabled:opacity-60"
             >
-              {stage === "sending" ? "Mengirim..." : t("contact.confirm.yes")}
+              {stage === "sending" ? t("contact.sending") : t("contact.confirm.yes")}
             </button>
           </>
         }
@@ -199,34 +202,39 @@ export default function Contact() {
           </button>
         }
       >
-        <div className="space-y-3 text-sm">
-          <div className="flex justify-center text-4xl">✅</div>
-          <p>{t("contact.success.desc")}</p>
-        </div>
+        <p className="text-sm">{t("contact.success.desc")}</p>
       </Modal>
     </div>
   );
 }
 
-function InfoRow({ label, value }) {
+function InfoRow({ label, value, href }) {
   return (
     <div>
-      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-        {label}
-      </p>
-      <p className="mt-1 text-slate-900 whitespace-pre-line">{value}</p>
+      <dt className="text-sm font-medium text-slate-600">{label}</dt>
+      <dd className="mt-1 text-slate-900 whitespace-pre-line">
+        {href && value ? (
+          <a href={href} className="text-primary-700 hover:underline break-all">
+            {value}
+          </a>
+        ) : (
+          value
+        )}
+      </dd>
     </div>
   );
 }
 
 function Field({ label, value, onChange, type = "text", required }) {
+  const id = useId();
   return (
     <div>
-      <label className="block text-sm font-medium text-slate-700 mb-1">
+      <label htmlFor={id} className="block text-sm font-medium text-slate-700 mb-1">
         {label}
         {required && <span className="text-primary-600"> *</span>}
       </label>
       <input
+        id={id}
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}

@@ -1,15 +1,9 @@
 import { useToast } from "../context/ToastContext";
 
 const TONE_CLASSES = {
-  success: "bg-emerald-600 text-white border-emerald-700",
-  error: "bg-primary-600 text-white border-primary-700",
+  success: "bg-emerald-700 text-white border-emerald-800",
+  error: "bg-red-700 text-white border-red-800",
   info: "bg-slate-900 text-white border-slate-800",
-};
-
-const TONE_ICONS = {
-  success: "✅",
-  error: "⚠️",
-  info: "ℹ️",
 };
 
 export default function ToastViewport() {
@@ -31,9 +25,6 @@ export default function ToastViewport() {
             TONE_CLASSES[t.tone] || TONE_CLASSES.info
           }`}
         >
-          <span className="text-base leading-none mt-0.5" aria-hidden>
-            {TONE_ICONS[t.tone] || TONE_ICONS.info}
-          </span>
           <div className="flex-1 text-sm">
             {t.title && <p className="font-semibold">{t.title}</p>}
             {t.message && <p className={t.title ? "opacity-90 mt-0.5" : ""}>{t.message}</p>}

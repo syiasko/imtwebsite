@@ -41,10 +41,7 @@ export default function CatalogPrint() {
     <div className="container mx-auto px-4 py-12">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 print:hidden">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-primary-700">
-            Katalog
-          </p>
-          <h1 className="mt-1 text-3xl md:text-4xl font-bold text-slate-900">
+          <h1 className="text-3xl md:text-4xl font-bold text-slate-900">
             Download Katalog Produk
           </h1>
           <p className="mt-2 text-slate-600 max-w-2xl">
@@ -61,7 +58,7 @@ export default function CatalogPrint() {
               rel="noreferrer"
               className="inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-semibold"
             >
-              📄 Download Katalog (PDF)
+              Download Katalog (PDF)
             </a>
           ) : (
             <button
@@ -69,7 +66,7 @@ export default function CatalogPrint() {
               onClick={handlePrint}
               className="inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-semibold"
             >
-              ⬇ Cetak / Simpan PDF
+              Cetak / Simpan PDF
             </button>
           )}
           <button

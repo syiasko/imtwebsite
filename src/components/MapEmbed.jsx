@@ -1,3 +1,5 @@
+import { useT } from "../context/LanguageContext";
+
 export default function MapEmbed({
   embedUrl,
   shareUrl,
@@ -5,6 +7,7 @@ export default function MapEmbed({
   height = 360,
   theme = "light",
 }) {
+  const { t } = useT();
   // Auto-build a Maps embed from the address with the location marked (`q=`).
   const src =
     embedUrl ||
@@ -29,7 +32,7 @@ export default function MapEmbed({
     <div className={wrapperClass}>
       <iframe
         src={src}
-        title="Lokasi kami di Google Maps"
+        title={t("map.title")}
         width="100%"
         height={height}
         style={{ border: 0, display: "block" }}
@@ -40,7 +43,7 @@ export default function MapEmbed({
       {shareUrl && (
         <div className={ctaClass}>
           <span className={dark ? "text-slate-400" : "text-slate-600"}>
-            Buka langsung di Google Maps
+            {t("map.hint")}
           </span>
           <a
             href={shareUrl}
@@ -48,7 +51,7 @@ export default function MapEmbed({
             rel="noreferrer"
             className={linkClass}
           >
-            Buka peta →
+            {t("map.open")}
           </a>
         </div>
       )}

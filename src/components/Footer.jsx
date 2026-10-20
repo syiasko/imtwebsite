@@ -21,9 +21,9 @@ export default function Footer() {
             </p>
           </div>
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wider text-secondary-400">
+            <h2 className="text-sm font-semibold text-secondary-400">
               {t("footer.aboutHeading")}
-            </p>
+            </h2>
             <p className="mt-2 text-sm font-semibold text-white">
               {company.name}
             </p>
@@ -32,43 +32,47 @@ export default function Footer() {
         </div>
 
         <div className="space-y-4">
-          <p className="text-sm font-semibold uppercase tracking-wider text-secondary-400">
+          <h2 className="text-sm font-semibold text-secondary-400">
             {t("footer.contactHeading")}
-          </p>
-          <ul className="space-y-2 text-sm">
-            <li className="flex gap-2">
-              <span aria-hidden>📍</span>
-              <span className="whitespace-pre-line">{company.address}</span>
-            </li>
-            <li className="flex gap-2">
-              <span aria-hidden>📞</span>
-              <a
-                href={`tel:${company.whatsapp || company.phone}`}
-                className="hover:text-white break-all"
-              >
-                {company.whatsapp || company.phone}
-              </a>
-            </li>
-            <li className="flex gap-2">
-              <span aria-hidden>✉️</span>
-              <a
-                href={`mailto:${company.email}`}
-                className="hover:text-white break-all"
-              >
-                {company.email}
-              </a>
-            </li>
-            <li className="flex gap-2">
-              <span aria-hidden>🕒</span>
-              <span>{company.hours}</span>
-            </li>
-          </ul>
+          </h2>
+          <dl className="space-y-3 text-sm">
+            <div>
+              <dt className="text-slate-400">{t("contact.address")}</dt>
+              <dd className="whitespace-pre-line">{company.address}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-400">{t("contact.phone")}</dt>
+              <dd>
+                <a
+                  href={`tel:${company.whatsapp || company.phone}`}
+                  className="hover:text-white break-all"
+                >
+                  {company.whatsapp || company.phone}
+                </a>
+              </dd>
+            </div>
+            <div>
+              <dt className="text-slate-400">{t("contact.email")}</dt>
+              <dd>
+                <a
+                  href={`mailto:${company.email}`}
+                  className="hover:text-white break-all"
+                >
+                  {company.email}
+                </a>
+              </dd>
+            </div>
+            <div>
+              <dt className="text-slate-400">{t("contact.hours")}</dt>
+              <dd>{company.hours}</dd>
+            </div>
+          </dl>
         </div>
 
         <div className="md:col-span-2 lg:col-span-1">
-          <p className="text-sm font-semibold uppercase tracking-wider text-secondary-400 mb-3">
+          <h2 className="text-sm font-semibold text-secondary-400 mb-3">
             {t("footer.locationHeading")}
-          </p>
+          </h2>
           <MapEmbed
             embedUrl={company.mapsEmbedUrl}
             shareUrl={company.mapsShareUrl}
@@ -80,9 +84,8 @@ export default function Footer() {
       </div>
 
       <div className="border-t border-slate-800">
-        <div className="container mx-auto px-4 py-4 text-xs text-slate-500 flex flex-col md:flex-row justify-between gap-2">
+        <div className="container mx-auto px-4 py-4 text-xs text-slate-400">
           <p>{t("footer.copyright", { year: new Date().getFullYear(), company: company.name })}</p>
-          <p>{t("footer.poweredBy")}</p>
         </div>
       </div>
     </footer>

@@ -46,14 +46,14 @@ export default function YouTubeSection({ url, title, subtitle }) {
     embedSrc = `https://www.youtube.com/embed/videoseries?list=${parsed.id}&rel=0&modestbranding=1`;
   }
 
+  // Nothing to show visitors until the admin sets a video or channel URL.
+  if (!embedSrc && parsed?.type !== "channel") return null;
+
   return (
     <section className="bg-slate-900 text-white">
-      <div className="container mx-auto px-4 py-16">
+      <div className="container mx-auto px-4 py-12 md:py-16">
         <div className="text-center max-w-2xl mx-auto mb-8">
-          <p className="text-xs font-semibold uppercase tracking-widest text-secondary-500">
-            {t("youtube.eyebrow")}
-          </p>
-          <h2 className="mt-2 text-2xl md:text-3xl font-bold">{heading}</h2>
+          <h2 className="text-2xl md:text-3xl font-bold">{heading}</h2>
           {subtitle && (
             <p className="mt-3 text-slate-300 text-sm md:text-base">
               {subtitle}
@@ -73,8 +73,8 @@ export default function YouTubeSection({ url, title, subtitle }) {
                 loading="lazy"
               />
             </div>
-          ) : parsed?.type === "channel" ? (
-            <div className="rounded-2xl bg-slate-800 border border-white/10 p-10 text-center">
+          ) : (
+            <div className="rounded-2xl bg-slate-800 border border-white/10 p-8 md:p-10 text-center">
               <p className="text-slate-300">{t("youtube.fallback")}</p>
               <a
                 href={parsed.url}
@@ -84,10 +84,6 @@ export default function YouTubeSection({ url, title, subtitle }) {
               >
                 {t("youtube.openChannel")}
               </a>
-            </div>
-          ) : (
-            <div className="rounded-2xl bg-slate-800 border border-white/10 p-10 text-center text-slate-400">
-              {t("youtube.notConfigured")}
             </div>
           )}
         </div>

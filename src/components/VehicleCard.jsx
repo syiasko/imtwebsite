@@ -8,24 +8,24 @@ export default function VehicleCard({ vehicle, categoryName }) {
   return (
     <Link
       to={vehiclePath(vehicle)}
-      className="group bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-200 hover:shadow-lg hover:-translate-y-0.5 transition"
+      className="group bg-white rounded-2xl overflow-hidden border border-slate-200 hover:border-primary-300 hover:shadow-md transition"
     >
       <div className="aspect-[4/3] bg-slate-100 overflow-hidden">
         {cover ? (
           <img
             src={cover}
             alt={vehicle.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+            className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full grid place-items-center text-slate-400 text-sm">
-            —
+          <div className="w-full h-full grid place-items-center text-slate-600 text-sm">
+            {t("products.noPhoto")}
           </div>
         )}
       </div>
       <div className="p-5">
         {categoryName && (
-          <span className="inline-block text-[11px] font-semibold uppercase tracking-wide text-primary-700 bg-primary-50 px-2 py-0.5 rounded">
+          <span className="inline-block text-xs font-semibold text-primary-700 bg-primary-50 px-2 py-0.5 rounded">
             {categoryName}
           </span>
         )}
@@ -38,10 +38,9 @@ export default function VehicleCard({ vehicle, categoryName }) {
           </p>
         )}
         <div className="mt-4 flex items-center justify-between text-sm">
-          <span className="text-slate-500">
-            {t("products.featuresCount", {
-              count: vehicle.features?.length || 0,
-            })}
+          <span className="text-slate-600">
+            {vehicle.features?.length > 0 &&
+              t("products.featuresCount", { count: vehicle.features.length })}
           </span>
           <span className="font-semibold text-primary-700 group-hover:underline">
             {t("products.viewDetail")}

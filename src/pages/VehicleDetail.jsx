@@ -6,12 +6,19 @@ import SpecTable from "../components/SpecTable";
 import CatalogDownloadButton from "../components/CatalogDownloadButton";
 import { trackEvent } from "../firebase/config";
 import { findVehicleByParam, vehiclePath } from "../utils/slug";
+import { useLoadState } from "../components/LoadState";
 
 export default function VehicleDetail() {
   const { slug } = useParams();
   const { vehicles, categories, company } = useData();
   const { t } = useT();
+  const loadState = useLoadState();
   const vehicle = findVehicleByParam(vehicles, slug);
+
+  // Without this, a direct link shows "not found" until Firestore responds.
+  if (loadState && !vehicle) {
+    return <div className="container mx-auto px-4 py-10">{loadState}</div>;
+  }
 
   if (!vehicle) {
     return (
@@ -68,7 +75,7 @@ export default function VehicleDetail() {
 
         <div>
           {category && (
-            <span className="inline-block text-[11px] font-semibold uppercase tracking-wider text-primary-700 bg-primary-50 px-2 py-1 rounded">
+            <span className="inline-block text-xs font-semibold text-primary-700 bg-primary-50 px-2 py-1 rounded">
               {category.name}
             </span>
           )}
@@ -85,7 +92,7 @@ export default function VehicleDetail() {
 
           {vehicle.features?.length > 0 && (
             <div className="mt-6">
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500">
+              <h2 className="text-base font-semibold text-slate-900">
                 {t("detail.featuresHeading")}
               </h2>
               <ul className="mt-3 grid sm:grid-cols-2 gap-2">
@@ -144,16 +151,22 @@ export default function VehicleDetail() {
               <Link
                 key={v.id}
                 to={vehiclePath(v)}
-                className="bg-white rounded-2xl overflow-hidden border border-slate-200 hover:shadow-md transition"
+                className="bg-white rounded-2xl overflow-hidden border border-slate-200 hover:border-primary-300 hover:shadow-md transition"
               >
-                <img
-                  src={v.images?.[0]}
-                  alt={v.name}
-                  className="w-full h-40 object-cover"
-                />
+                {v.images?.[0] ? (
+                  <img
+                    src={v.images[0]}
+                    alt={v.name}
+                    className="w-full h-40 object-cover"
+                  />
+                ) : (
+                  <div className="h-40 bg-slate-100 grid place-items-center text-sm text-slate-600">
+                    {t("products.noPhoto")}
+                  </div>
+                )}
                 <div className="p-4">
                   <h3 className="font-semibold text-slate-900">{v.name}</h3>
-                  <p className="text-sm text-slate-500 line-clamp-2">
+                  <p className="text-sm text-slate-600 line-clamp-2">
                     {v.tagline}
                   </p>
                 </div>

@@ -1,10 +1,11 @@
+import { useT } from "../context/LanguageContext";
+
 export default function SpecTable({ specs }) {
+  const { t } = useT();
   const entries = Object.entries(specs || {});
   if (entries.length === 0) {
     return (
-      <p className="text-sm text-slate-500 italic">
-        Spesifikasi belum tersedia.
-      </p>
+      <p className="text-sm text-slate-600">{t("detail.specsEmpty")}</p>
     );
   }
   return (
