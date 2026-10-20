@@ -15,6 +15,18 @@
         "."
       ],
       "env": {}
+    },
+    "imt-admin": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "mcp/server.mjs"
+      ],
+      "env": {
+        "IMT_ADMIN_USERNAME": "${IMT_ADMIN_USERNAME:-}",
+        "IMT_ADMIN_PASSWORD": "${IMT_ADMIN_PASSWORD:-}",
+        "IMT_SITE_URL": "${IMT_SITE_URL:-}"
+      }
     }
   }
 }

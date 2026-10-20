@@ -27,7 +27,7 @@ import {
   db,
   firebaseConfig,
   staffEmail,
-} from "./config";
+} from "./config.js";
 
 const CATEGORIES = "categories";
 const VEHICLES = "vehicles";

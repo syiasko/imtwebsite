@@ -23,6 +23,11 @@ Single-page React app untuk showcase **PT. INDRAPRASTA MULIA TEKNIK** (IMT Karos
 > Password user lain tidak bisa diganti dari panel. Kalau ada yang lupa
 > password, reset di Firebase Console → Authentication → Users.
 
+### Kelola lewat AI agent (MCP)
+`mcp/server.mjs` membuka fitur panel admin sebagai tools MCP, supaya admin bisa
+mengubah konten lewat chat di Claude Code atau Codex. Login memakai akun panel
+yang sama, dan role-nya tetap berlaku. Lihat [`mcp/README.md`](mcp/README.md).
+
 ## Stack
 
 - React 18 + Vite 5 + React Router 6

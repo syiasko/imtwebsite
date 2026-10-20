@@ -18,8 +18,12 @@ export const db = getFirestore(app);
 export const auth = getAuth(app);
 
 // `VITE_FIREBASE_EMULATORS=1 npm run dev` talks to `firebase emulators:start`
-// instead of production, for testing logins and rules locally.
-export const USE_EMULATORS = import.meta.env.VITE_FIREBASE_EMULATORS === "1";
+// instead of production, for testing logins and rules locally. The MCP server
+// (mcp/server.mjs) imports this file under Node, where the flag comes from
+// process.env instead of Vite.
+export const USE_EMULATORS =
+  (import.meta.env?.VITE_FIREBASE_EMULATORS ??
+    globalThis.process?.env?.VITE_FIREBASE_EMULATORS) === "1";
 export const AUTH_EMULATOR_URL = "http://127.0.0.1:9099";
 if (USE_EMULATORS) {
   connectFirestoreEmulator(db, "127.0.0.1", 8080);
