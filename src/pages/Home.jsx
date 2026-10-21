@@ -157,7 +157,8 @@ function HeroTileGrid({ categories, vehicles }) {
           }`}
         >
           <img
-            src={items[0].images[0]}
+            src={items[0].thumbs[0]}
+            loading="lazy"
             alt={items[0].name}
             className="absolute inset-0 w-full h-full object-cover"
           />

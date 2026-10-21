@@ -17,7 +17,7 @@ export default function Admin() {
     users,
     messages,
     loading,
-    firestoreError,
+    loadError,
   } = useData();
   const unreadMessages = messages.filter(
     (m) => (m.status || "New") === "New"
@@ -166,7 +166,7 @@ export default function Admin() {
             >
               {role}
             </span>
-            . Data tersimpan di Firestore.
+            .
           </p>
         </div>
         <div className="flex gap-2">
@@ -185,11 +185,10 @@ export default function Admin() {
         </div>
       </div>
 
-      {firestoreError && (
+      {loadError && (
         <div role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
-          Data dari Firestore gagal dimuat:{" "}
-          {firestoreError.message || "Subscription error"}. Periksa Firestore
-          rules di Firebase Console.
+          Data gagal dimuat: {loadError.message || "kesalahan tidak diketahui"}.
+          Muat ulang halaman; kalau masih gagal, cek status Supabase.
         </div>
       )}
 

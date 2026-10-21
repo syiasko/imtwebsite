@@ -1,6 +1,6 @@
 import { useId, useMemo, useState } from "react";
 import { useData } from "../../context/DataContext";
-import { authErrorMessage, useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/AuthContext";
 import { ConfirmDialog } from "../../components/Modal";
 import { AccessDenied, useIsAdmin } from "../Admin";
 
@@ -26,7 +26,7 @@ export default function AdminUsers() {
 }
 
 function AdminUsersInner() {
-  const { users, upsertUser, deleteUser } = useData();
+  const { users, upsertUser, deleteUser, resetUserPassword } = useData();
   const [draft, setDraft] = useState(emptyDraft);
   const [error, setError] = useState("");
   const [savingMsg, setSavingMsg] = useState("");
@@ -80,12 +80,23 @@ function AdminUsersInner() {
         setError("Anda tidak bisa menurunkan role akun sendiri.");
         return;
       }
+      if (editing && draft.password && draft.password.length < 6) {
+        setError("Password baru minimal 6 karakter.");
+        return;
+      }
       await upsertUser(draft);
+      if (editing && draft.password) await resetUserPassword(draft.id, draft.password);
       setDraft(emptyDraft);
-      setSavingMsg(editing ? "User diperbarui." : "User ditambahkan.");
+      setSavingMsg(
+        editing
+          ? draft.password
+            ? "User diperbarui dan password diganti."
+            : "User diperbarui."
+          : "User ditambahkan."
+      );
       setTimeout(() => setSavingMsg(""), 2500);
     } catch (err) {
-      setError(err?.code ? authErrorMessage(err) : err.message || "Gagal menyimpan user.");
+      setError(err.message || "Gagal menyimpan user.");
     }
   };
 
@@ -223,22 +234,18 @@ function AdminUsersInner() {
             <option value="editor">Editor (manage content)</option>
           </select>
         </div>
-        {editing ? (
-          <p className="text-xs text-slate-600">
-            Password hanya bisa diganti oleh pemilik akun lewat tombol Ganti
-            password. Kalau lupa, admin bisa mengatur ulang di Firebase Console
-            (Authentication, Users).
-          </p>
-        ) : (
-          <Field
-            label="Password"
-            type="password"
-            required
-            value={draft.password}
-            onChange={(v) => setDraft({ ...draft, password: v })}
-            hint="Minimal 6 karakter."
-          />
-        )}
+        <Field
+          label={editing ? "Password baru (opsional)" : "Password"}
+          type="password"
+          required={!editing}
+          value={draft.password}
+          onChange={(v) => setDraft({ ...draft, password: v })}
+          hint={
+            editing
+              ? "Isi hanya untuk mengatur ulang password user ini, misalnya kalau lupa. Beri tahu password barunya ke user tersebut."
+              : "Minimal 6 karakter."
+          }
+        />
 
         {error && (
           <p role="alert" className="text-sm text-red-800 bg-red-50 border border-red-200 px-3 py-2 rounded">

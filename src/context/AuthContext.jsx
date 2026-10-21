@@ -1,107 +1,111 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import {
-  EmailAuthProvider,
-  browserSessionPersistence,
-  onAuthStateChanged,
-  reauthenticateWithCredential,
-  setPersistence,
-  signInWithEmailAndPassword,
-  signOut as fbSignOut,
-  updatePassword,
-} from "firebase/auth";
-import { auth, staffEmail } from "../firebase/config";
-import { subscribeUserProfile } from "../firebase/api";
+import { supabase } from "../lib/supabase";
+import { fetchProfile } from "../lib/api";
+import { staffEmail } from "../lib/staff";
 
 const AuthContext = createContext(null);
 
-// Firebase error codes → messages for the login and password forms.
+// Supabase auth errors → messages for the login and password forms.
 export const authErrorMessage = (err) => {
-  switch (err?.code) {
-    case "auth/invalid-credential":
-    case "auth/invalid-login-credentials":
-    case "auth/user-not-found":
-    case "auth/wrong-password":
-    case "auth/invalid-email":
-      return "Username atau password salah.";
-    case "auth/too-many-requests":
-      return "Terlalu banyak percobaan gagal. Tunggu beberapa menit lalu coba lagi.";
-    case "auth/network-request-failed":
-      return "Tidak ada koneksi ke server. Periksa internet lalu coba lagi.";
-    case "auth/operation-not-allowed":
-      return "Login username/password belum diaktifkan di Firebase Console (Authentication, Sign-in method, Email/Password).";
-    case "auth/weak-password":
-      return "Password minimal 6 karakter.";
-    case "auth/email-already-in-use":
-      return "Username ini sudah terdaftar di Firebase Auth. Pakai username lain, atau hapus akun lamanya di Firebase Console.";
-    case "auth/requires-recent-login":
-      return "Sesi sudah lama. Logout lalu login lagi sebelum mengganti password.";
-    default:
-      return err?.message || "Terjadi kesalahan.";
+  const code = err?.code || "";
+  const msg = err?.message || "";
+  if (code === "invalid_credentials" || /invalid login credentials/i.test(msg)) {
+    return "Username atau password salah.";
   }
+  if (code === "over_request_rate_limit" || err?.status === 429) {
+    return "Terlalu banyak percobaan. Tunggu beberapa menit lalu coba lagi.";
+  }
+  if (code === "weak_password") return "Password minimal 6 karakter.";
+  if (code === "same_password") return "Password baru sama dengan password lama.";
+  if (/fetch|network/i.test(msg)) {
+    return "Tidak ada koneksi ke server. Periksa internet lalu coba lagi.";
+  }
+  return msg || "Terjadi kesalahan.";
 };
 
 // status: "loading" | "signedOut" | "signedIn" | "noAccess"
-// A signed-in Firebase user only gets into the panel when users/{uid} exists
-// with a known role; Firestore rules enforce the same check server-side.
+// A signed-in user only gets into the panel when profiles has a row with a
+// known role; the database policies enforce the same check server-side.
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(undefined);
+  const [session, setSession] = useState(undefined);
   const [profile, setProfile] = useState(undefined);
 
-  useEffect(
-    () =>
-      onAuthStateChanged(auth, (u) => {
-        // Older builds signed every visitor in anonymously; drop those sessions.
-        if (u?.isAnonymous) {
-          fbSignOut(auth);
-          return;
-        }
-        setProfile(undefined);
-        setUser(u);
-      }),
-    []
-  );
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
+    return () => data.subscription.unsubscribe();
+  }, []);
+
+  const uid = session?.user?.id || null;
 
   useEffect(() => {
-    if (!user) return undefined;
-    return subscribeUserProfile(
-      user.uid,
-      (p) => setProfile(p),
-      () => setProfile(null)
-    );
-  }, [user]);
+    if (!uid) {
+      setProfile(null);
+      return undefined;
+    }
+    let cancelled = false;
+    setProfile(undefined);
+    const load = () =>
+      fetchProfile(uid)
+        .then((p) => !cancelled && setProfile(p))
+        .catch(() => !cancelled && setProfile(null));
+    load();
+    // Role changes or removal by an admin apply without a reload.
+    const channel = supabase
+      .channel(`profile-${uid}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles", filter: `id=eq.${uid}` },
+        load
+      )
+      .subscribe();
+    const poll = setInterval(load, 60 * 1000);
+    return () => {
+      cancelled = true;
+      clearInterval(poll);
+      supabase.removeChannel(channel);
+    };
+  }, [uid]);
 
   const role = profile?.role;
   const hasRole = role === "admin" || role === "editor";
   const status =
-    user === undefined || (user && profile === undefined)
+    session === undefined || (uid && profile === undefined)
       ? "loading"
-      : !user
+      : !uid
         ? "signedOut"
         : hasRole
           ? "signedIn"
           : "noAccess";
 
   const signIn = useCallback(async (username, password) => {
-    await setPersistence(auth, browserSessionPersistence);
-    await signInWithEmailAndPassword(auth, staffEmail(username), password);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: staffEmail(username),
+      password,
+    });
+    if (error) throw error;
   }, []);
 
-  const signOut = useCallback(() => fbSignOut(auth), []);
+  const signOut = useCallback(() => supabase.auth.signOut(), []);
 
-  const changePassword = useCallback(async (currentPassword, newPassword) => {
-    const u = auth.currentUser;
-    if (!u) throw new Error("Belum login.");
-    await reauthenticateWithCredential(
-      u,
-      EmailAuthProvider.credential(u.email, currentPassword)
-    );
-    await updatePassword(u, newPassword);
-  }, []);
+  const changePassword = useCallback(
+    async (currentPassword, newPassword) => {
+      const email = session?.user?.email;
+      if (!email) throw new Error("Belum login.");
+      const check = await supabase.auth.signInWithPassword({ email, password: currentPassword });
+      if (check.error) {
+        throw Object.assign(new Error("Password lama salah."), { code: "wrong_current_password" });
+      }
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+    },
+    [session]
+  );
 
   const value = useMemo(
     () => ({
       status,
-      uid: user?.uid || null,
+      uid,
       username: profile?.username || "",
       role: hasRole ? role : null,
       isStaff: status === "signedIn",
@@ -110,7 +114,7 @@ export function AuthProvider({ children }) {
       signOut,
       changePassword,
     }),
-    [status, user, profile, role, hasRole, signIn, signOut, changePassword]
+    [status, uid, profile, role, hasRole, signIn, signOut, changePassword]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

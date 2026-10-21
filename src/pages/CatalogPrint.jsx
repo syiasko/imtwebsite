@@ -124,9 +124,10 @@ export default function CatalogPrint() {
                       key={v.id}
                       className="rounded-xl border border-slate-200 overflow-hidden bg-white print:break-inside-avoid"
                     >
-                      {v.images?.[0] && (
+                      {v.thumbs?.[0] && (
                         <img
-                          src={v.images[0]}
+                          src={v.thumbs[0]}
+                          loading="lazy"
                           alt={v.name}
                           className="w-full h-44 object-cover"
                         />

@@ -1,13 +1,25 @@
 import { useEffect, useState } from "react";
 import { useT } from "../context/LanguageContext";
+import { smallUrl } from "../lib/media";
+import { MEDIA_BASE_URL } from "../lib/supabase";
 
 // No autoplay: visitors compare photos at their own pace (WCAG 2.2.2).
 export default function Slideshow({ images = [], alt = "" }) {
   const { t } = useT();
   const [index, setIndex] = useState(0);
   const [lightbox, setLightbox] = useState(false);
+  // Full-size photos load when first shown (plus the next one), not all at once.
+  const [seen, setSeen] = useState(() => new Set([0, 1]));
   const safe = images.filter(Boolean);
   const total = safe.length;
+
+  useEffect(() => {
+    setSeen((prev) =>
+      prev.has(index) && prev.has((index + 1) % (total || 1))
+        ? prev
+        : new Set([...prev, index, (index + 1) % (total || 1)])
+    );
+  }, [index, total]);
 
   if (total === 0) {
     return (
@@ -30,7 +42,7 @@ export default function Slideshow({ images = [], alt = "" }) {
         {safe.map((src, i) => (
           <img
             key={i}
-            src={src}
+            src={seen.has(i) ? src : undefined}
             alt={`${alt} ${i + 1}`}
             className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
               i === index ? "opacity-100" : "opacity-0"
@@ -83,7 +95,12 @@ export default function Slideshow({ images = [], alt = "" }) {
                   : "border-transparent opacity-70 hover:opacity-100"
               }`}
             >
-              <img src={src} alt="" className="w-full h-full object-cover" />
+              <img
+                src={smallUrl(MEDIA_BASE_URL, src)}
+                alt=""
+                loading="lazy"
+                className="w-full h-full object-cover"
+              />
             </button>
           ))}
         </div>

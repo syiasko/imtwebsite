@@ -1,92 +1,19 @@
 rules_version = '2';
 
-// Public read for the showcase site. Writes need a staff account: a Firebase
-// Auth email/password login whose users/{uid} profile has role admin or
-// editor. Anonymous sessions get nothing beyond what visitors get.
+// Firestore now only holds the signage greeting (settings/greeting), read by
+// the office TV app. The catalog, accounts and messages moved to Supabase.
+// The admin panel writes the greeting through api/greeting.js with the
+// Firebase Admin SDK, which bypasses these rules; clients can only read it.
 //
 // Deploy via: firebase deploy --only firestore:rules
 service cloud.firestore {
   match /databases/{database}/documents {
-    function profilePath() {
-      return /databases/$(database)/documents/users/$(request.auth.uid);
-    }
-    function hasPasswordLogin() {
-      return request.auth != null
-        && request.auth.token.firebase.sign_in_provider == 'password';
-    }
-    function role() {
-      return get(profilePath()).data.role;
-    }
-    function isStaff() {
-      return hasPasswordLogin() && exists(profilePath())
-        && role() in ['admin', 'editor'];
-    }
-    function isAdmin() {
-      return hasPasswordLogin() && exists(profilePath()) && role() == 'admin';
-    }
-    function optionalString(data, key, max) {
-      return !(key in data) || (data[key] is string && data[key].size() <= max);
-    }
-
-    match /categories/{id} {
+    match /settings/greeting {
       allow read: if true;
-      allow write: if isStaff();
+      allow write: if false;
     }
-    match /vehicles/{id} {
-      allow read: if true;
-      allow write: if isStaff();
-    }
-    match /settings/{id} {
-      // company and greeting; both are admin-only screens in the panel.
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-    match /users/{uid} {
-      allow read: if isAdmin()
-        || (hasPasswordLogin() && request.auth.uid == uid);
-      allow write: if isAdmin();
-    }
-    match /ai_tokens/{id} {
-      // Tokens for the hosted MCP endpoint (src/utils/aiToken.js). Only the
-      // hash of the secret is stored. Each user manages their own; admins
-      // can see and revoke everyone's. lastUsedAt/lastClient are written by
-      // the server (Admin SDK), never by clients.
-      allow read, delete: if isAdmin()
-        || (isStaff() && resource.data.uid == request.auth.uid);
-      allow create: if isStaff()
-        && request.resource.data.keys().hasOnly(
-            ['uid', 'name', 'prefix', 'tokenHash', 'createdAt', 'expiresAt'])
-        && request.resource.data.uid == request.auth.uid
-        && request.resource.data.name is string
-        && request.resource.data.name.size() > 0
-        && request.resource.data.name.size() <= 80
-        && request.resource.data.prefix is string
-        && request.resource.data.tokenHash is string
-        && request.resource.data.tokenHash.matches('^[0-9a-f]{64}$')
-        && request.resource.data.createdAt is string
-        && (request.resource.data.expiresAt == null
-            || request.resource.data.expiresAt is string);
-      allow update: if false;
-    }
-    match /contact_messages/{id} {
-      // Visitors may submit a message, shaped like the contact form.
-      allow create: if request.resource.data.keys().hasOnly(
-            ['name', 'email', 'phone', 'company', 'subject', 'message',
-             'status', 'created_at'])
-        && request.resource.data.name is string
-        && request.resource.data.name.size() > 0
-        && request.resource.data.name.size() <= 200
-        && request.resource.data.message is string
-        && request.resource.data.message.size() > 0
-        && request.resource.data.message.size() <= 5000
-        && optionalString(request.resource.data, 'email', 200)
-        && optionalString(request.resource.data, 'phone', 50)
-        && optionalString(request.resource.data, 'company', 200)
-        && optionalString(request.resource.data, 'subject', 300)
-        && request.resource.data.status == 'New'
-        && request.resource.data.created_at == request.time;
-      allow read, update: if isStaff();
-      allow delete: if isAdmin();
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

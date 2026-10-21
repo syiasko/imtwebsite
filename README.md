@@ -12,51 +12,69 @@ Single-page React app untuk showcase **PT. INDRAPRASTA MULIA TEKNIK** (IMT Karos
 - Halaman kontak dengan Google Maps embed + WhatsApp CTA
 
 ### Admin Panel (`/dapurnyaimt`)
-- Login username + password lewat Firebase Authentication (email/password)
-- Role **admin** dan **editor** disimpan di `users/{uid}`; Firestore rules memeriksa role di server
+- Login username + password lewat Supabase Auth; role **admin** dan **editor**
+  disimpan di tabel `profiles` dan diperiksa oleh row level security (RLS)
 - **Kategori** — CRUD kategori kendaraan
-- **Kendaraan** — CRUD unit kendaraan dengan upload foto, spec key/value, fitur unggulan
-- **Company Setting** — edit identitas perusahaan, alamat, kontak, URL YouTube, Google Maps embed, dan upload katalog PDF
-- **Pengguna** (admin) — tambah user baru, ubah nama/role, cabut akses
+- **Kendaraan** — CRUD unit dengan upload foto (ke R2), spec key/value, fitur unggulan
+- **Company Setting** — identitas perusahaan, kontak, YouTube, Google Maps, katalog PDF (ke R2)
+- **Greeting** — teks sambutan TV signage
+- **Pengguna** (admin) — tambah user, ubah nama/role, atur ulang password, hapus
+- **Akses AI** — token untuk AI agent (lihat di bawah)
 - **Ganti password** — setiap user mengganti password-nya sendiri
-
-> Password user lain tidak bisa diganti dari panel. Kalau ada yang lupa
-> password, reset di Firebase Console → Authentication → Users.
 
 ### Kelola lewat AI agent (MCP)
 Fitur panel admin juga tersedia sebagai tools MCP, supaya admin bisa mengubah
 konten lewat chat di Claude Code, Codex, atau agent lain. Tab **Akses AI** di
 panel membuat token untuk endpoint `/api/mcp` dan menampilkan sesi agent yang
-aktif. Login memakai akun panel yang sama, dan role-nya tetap berlaku. Lihat
+aktif. Token bertindak sebagai akun pembuatnya, dengan role-nya. Lihat
 [`mcp/README.md`](mcp/README.md).
 
 ## Stack
 
-- React 18 + Vite 5 + React Router 6
-- Tailwind CSS 3 dengan palette: `primary #00428f` / `secondary #feae00` / `black & white`
-- **Firebase**: Firestore (data), Authentication email/password (login admin), Analytics (page tracking + custom events)
-- Vercel-ready (lihat `vercel.json` — SPA rewrites)
+- React 18 + Vite 5 + React Router 6, Tailwind CSS 3
+  (palette `primary #00428f` / `secondary #feae00`)
+- **Supabase** (Postgres + Auth): katalog, pengaturan, pesan kontak, akun, token AI.
+  Skema dan RLS di `supabase/migrations/`
+- **Cloudflare R2**: foto unit (ukuran penuh 1600 px dan kecil 640 px) dan
+  katalog PDF, dilayani lewat CDN di `https://artu.imtindonesia.com`
+- **Firebase**: hanya greeting signage (`settings/greeting` di Firestore, dibaca
+  aplikasi TV) dan Analytics
+- **Vercel**: hosting + fungsi `api/` (upload media, akun, greeting, MCP)
 
-## Setup Firebase (sekali setup)
+## Arsitektur data
 
-Project sudah hard-code ke `imtwebsite-ddf59`. Yang perlu dilakukan di Firebase Console:
+- Halaman publik membaca `categories`, `vehicles`, `settings` dari Supabase
+  sekali saat dibuka (sekitar 70 KB), lalu foto dimuat dari CDN sesuai
+  kebutuhan (thumbnail di kartu, ukuran penuh di halaman detail).
+- `vehicles.images` menyimpan key R2 (`vehicles/<id>/<uuid>.jpg`; versi kecil
+  `...-sm.jpg`) atau URL https untuk gambar eksternal. `src/lib/media.js`
+  mengubah key jadi URL.
+- Upload dari panel: browser mengompres foto, minta presigned URL ke
+  `api/media.js`, lalu mengunggah langsung ke R2.
+- Panel memakai Supabase Realtime, jadi perubahan dari admin lain atau AI
+  agent langsung terlihat.
 
-1. **Authentication** → Sign-in method → **Email/Password** → Enable
-   (atau `firebase deploy --only auth`, konfigurasinya ada di `firebase.json`)
-2. **Firestore Rules** → `firebase deploy --only firestore:rules`
-3. **Analytics** sudah otomatis aktif via `measurementId`
+## Setup (sekali)
 
-Username login dipetakan ke email `<username>@imtwebsite-ddf59.firebaseapp.com`
-di Firebase Auth. Tidak ada email yang dikirim ke alamat itu.
+1. **Supabase**: terapkan skema dengan
+   `npx supabase db push --db-url "$SUPABASE_DB_URL"`. Di dashboard
+   Authentication, matikan **Allow new users to sign up**; akun dibuat dari
+   panel (Pengguna) lewat `api/admin-users.js`.
+2. **R2**: bucket `imt-website-media`; hubungkan custom domain
+   `artu.imtindonesia.com` (R2, bucket, Settings, Custom Domains). Jangan
+   pakai URL `r2.dev`: sebagian ISP di Indonesia memblokirnya.
+3. **Vercel env**: isi semua variabel server di `.env.example`
+   (`SUPABASE_SECRET_KEY`, `R2_*`, `MEDIA_BASE_URL`, `FIREBASE_SERVICE_ACCOUNT`).
+   Variabel `VITE_*` publik sudah ada di `.env.production`.
+4. **Firestore rules**: `firebase deploy --only firestore:rules` (hanya greeting
+   yang bisa dibaca; semua tulis lewat server).
 
-### Tes lokal dengan emulator
+Username login dipetakan ke email `<username>@staff.imt-karoseri.invalid`.
+Domain `.invalid` tidak bisa menerima email, jadi tidak ada email yang terkirim.
 
-```bash
-firebase emulators:start               # auth :9099, firestore :8080 (butuh Java)
-VITE_FIREBASE_EMULATORS=1 npm run dev  # app memakai emulator, bukan produksi
-```
-
-> Foto kendaraan disimpan sebagai data URL (base64) di **Firestore** — gratis dalam free tier sampai 1 GB. Untuk muat 10 foto dalam 1 dokumen Firestore (limit 1 MB/dok), tiap foto otomatis dikompres ke ≤90 KB base64. Tidak perlu Firebase Storage (yang berbayar).
+Migrasi dari Firestore (sudah dijalankan sekali, aman diulang):
+`node --env-file=.env.local scripts/migrate-firestore-to-supabase.mjs`
+(opsinya dijelaskan di komentar awal file).
 
 ## Cara menjalankan
 
@@ -70,35 +88,14 @@ npm run preview  # preview hasil build
 ## Struktur
 
 ```
+api/                 fungsi Vercel: media.js, admin-users.js, greeting.js, mcp.js
+server/              helper server: Supabase service client, R2, greeting, akun
+mcp/tools.mjs        tools MCP (dipakai api/mcp.js)
+scripts/             migrasi Firestore -> Supabase + R2
+supabase/migrations/ skema + RLS
 src/
-  firebase/
-    config.js      Firebase init + analytics + emulator switch
-    api.js         Firestore data access (subscribe, save, delete) + pembuatan akun staf
-  context/
-    AuthContext.jsx   login Firebase Auth + profil/role user
-    DataContext.jsx   subscribe Firestore + state + actions
-  data/
-    initialData.js    seed defaults (categories, vehicles, company)
-  components/
-    Navbar, Footer, VehicleCard, Slideshow, SpecTable
-    YouTubeSection, MapEmbed
-  pages/
-    Home, Products, VehicleDetail, Catalog, Contact
-    Admin (route: /dapurnyaimt)
-    admin/ AdminCategories, AdminVehicles, AdminSettings
-  App.jsx     router + page tracking
-  main.jsx    entry
+  lib/               supabase.js (client), api.js (akses data), media.js, staff.js
+  firebase/config.js greeting (Firestore) + Analytics
+  context/           AuthContext (Supabase Auth), DataContext (data + aksi)
+  pages/             halaman publik + admin/ (panel)
 ```
-
-## Analytics
-
-- `page_view` event dipanggil di setiap perubahan route
-- `whatsapp_click` di tombol WA (source: `vehicle_detail`, `contact`)
-- `contact_form_submit` saat form kontak disubmit
-
-Lihat data di **Firebase Console → Analytics** atau Google Analytics dashboard.
-
-## Catatan
-
-- Foto kendaraan disimpan sebagai data URL (base64) di Firestore. Maks **10 foto per unit**, target ≤90 KB base64 per foto (auto-compress agresif via canvas) supaya muat di 1 dokumen Firestore (limit 1 MB/dok). Resolusi tampilan masih cukup untuk listing & detail dengan slideshow (~1280px lebar).
-- PDF katalog max 800KB jika diupload langsung; lebih dari itu paste URL eksternal (Google Drive, Dropbox, dll).

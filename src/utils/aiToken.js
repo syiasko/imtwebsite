@@ -1,5 +1,5 @@
 // AI access tokens for the hosted MCP endpoint (/api/mcp).
-// Format: imt_<16-char id>_<43-char secret>. Firestore keeps ai_tokens/{id}
+// Format: imt_<16-char id>_<43-char secret>. The ai_tokens table keeps the row
 // with only the SHA-256 of the secret, so a leaked database can't be replayed.
 // Shared by the admin panel (browser) and api/mcp.js (Node); both have
 // crypto.getRandomValues and crypto.subtle.

@@ -77,7 +77,7 @@ export default function CategorySlider({ categories, vehicles }) {
         {categories.map((c) => {
           const items = vehicles.filter((v) => v.categoryId === c.id);
           // Show a real unit photo from this category rather than an icon.
-          const cover = items.find((v) => v.images?.length > 0)?.images[0];
+          const cover = items.find((v) => v.thumbs?.length > 0)?.thumbs[0];
           return (
             <Link
               key={c.id}
@@ -88,6 +88,7 @@ export default function CategorySlider({ categories, vehicles }) {
                 {cover && (
                   <img
                     src={cover}
+                    loading="lazy"
                     alt=""
                     className="w-full aspect-[16/9] object-cover"
                   />

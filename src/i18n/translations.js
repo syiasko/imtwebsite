@@ -1,5 +1,5 @@
 // All UI chrome translations. Vehicle/category content remains as the admin
-// types it (no auto-translation), since that data lives in Firestore.
+// types it (no auto-translation), since that data lives in the database.
 
 export const translations = {
   id: {

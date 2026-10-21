@@ -15,7 +15,7 @@ export default function VehicleDetail() {
   const loadState = useLoadState();
   const vehicle = findVehicleByParam(vehicles, slug);
 
-  // Without this, a direct link shows "not found" until Firestore responds.
+  // Without this, a direct link shows "not found" until the catalog loads.
   if (loadState && !vehicle) {
     return <div className="container mx-auto px-4 py-10">{loadState}</div>;
   }
@@ -153,9 +153,10 @@ export default function VehicleDetail() {
                 to={vehiclePath(v)}
                 className="bg-white rounded-2xl overflow-hidden border border-slate-200 hover:border-primary-300 hover:shadow-md transition"
               >
-                {v.images?.[0] ? (
+                {v.thumbs?.[0] ? (
                   <img
-                    src={v.images[0]}
+                    src={v.thumbs[0]}
+                    loading="lazy"
                     alt={v.name}
                     className="w-full h-40 object-cover"
                   />

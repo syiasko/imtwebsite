@@ -1,15 +1,15 @@
 import { useData } from "../context/DataContext";
 import { useT } from "../context/LanguageContext";
 
-// Loading / error placeholder for public pages that render Firestore data.
+// Loading / error placeholder for public pages that render catalog data.
 // Returns null once data is ready so callers can fall through to content:
 //   const loadState = useLoadState();
 //   return loadState || <Content />;
 export function useLoadState() {
-  const { loading, firestoreError } = useData();
+  const { loading, loadError } = useData();
   const { t } = useT();
 
-  if (firestoreError) {
+  if (loadError) {
     return (
       <div
         role="alert"

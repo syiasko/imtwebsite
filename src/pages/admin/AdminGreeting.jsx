@@ -32,7 +32,7 @@ function AdminGreetingInner() {
   const [savingErr, setSavingErr] = useState("");
   const textId = useId();
 
-  // Sync draft with Firestore data on load / change
+  // Sync draft with the stored greeting on load / change
   useEffect(() => {
     if (greeting) {
       setDraft({

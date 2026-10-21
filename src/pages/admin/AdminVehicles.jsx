@@ -2,9 +2,10 @@ import { useId, useMemo, useState, useRef } from "react";
 import { useData } from "../../context/DataContext";
 import { useToast } from "../../context/ToastContext";
 import { ConfirmDialog } from "../../components/Modal";
-import { compressImage, formatBytes } from "../../utils/imageCompression";
-
-const MAX_IMAGES = 10;
+import { formatBytes, preparePhoto } from "../../utils/imageCompression";
+import { uploadPhoto } from "../../lib/api";
+import { MAX_PHOTOS as MAX_IMAGES, smallUrl } from "../../lib/media";
+import { MEDIA_BASE_URL } from "../../lib/supabase";
 
 const emptyDraft = {
   id: "",
@@ -85,7 +86,7 @@ export default function AdminVehicles() {
     setConfirmDelete(null);
     if (!v) return;
     try {
-      await deleteVehicle(v.id);
+      await deleteVehicle(v);
       if (draft.id === v.id) startNew();
       toast.info(`Unit "${v.name}" dihapus.`);
     } catch (err) {
@@ -133,9 +134,10 @@ export default function AdminVehicles() {
                 draft.id === v.id ? "bg-primary-50/40" : ""
               }`}
             >
-              {v.images?.[0] ? (
+              {v.thumbs?.[0] ? (
                 <img
-                  src={v.images[0]}
+                  src={v.thumbs[0]}
+                  loading="lazy"
                   alt=""
                   className="h-16 w-20 rounded-lg object-cover bg-slate-100 flex-shrink-0"
                 />
@@ -268,22 +270,22 @@ function VehicleForm({
     await Promise.all(
       entries.map(async (entry) => {
         try {
-          const result = await compressImage(entry.file, {
-            onProgress: (p) =>
-              setPending((prev) =>
-                prev.map((x) =>
-                  x.tempId === entry.tempId ? { ...x, progress: p } : x
-                )
-              ),
-          });
+          const setProgress = (p) =>
+            setPending((prev) =>
+              prev.map((x) => (x.tempId === entry.tempId ? { ...x, progress: p } : x))
+            );
+          setProgress(10);
+          const photo = await preparePhoto(entry.file);
+          setProgress(50);
+          const url = await uploadPhoto(draft.id || "new", photo.full, photo.small);
           setDraft((prev) => ({
             ...prev,
-            images: [...prev.images, result.dataUrl],
+            images: [...prev.images, url],
           }));
           setPending((prev) => prev.filter((x) => x.tempId !== entry.tempId));
-          if (result.compressed) {
+          if (photo.originalSize > photo.finalSize) {
             toast.info(
-              `${entry.name} dikompres dari ${formatBytes(result.originalSize)} ke ${formatBytes(result.finalSize)}.`,
+              `${entry.name} dikompres dari ${formatBytes(photo.originalSize)} ke ${formatBytes(photo.finalSize)}.`,
               { duration: 4500 }
             );
           }
@@ -506,7 +508,7 @@ function VehicleForm({
                 className="relative aspect-[4/3] rounded-md overflow-hidden border border-slate-200 bg-slate-100"
               >
                 <img
-                  src={src}
+                  src={smallUrl(MEDIA_BASE_URL, src)}
                   alt={`Foto ${i + 1}`}
                   className="w-full h-full object-cover"
                 />
@@ -565,9 +567,8 @@ function VehicleForm({
           )}
         </div>
         <p className="mt-1.5 text-xs text-slate-600">
-          Bisa pilih beberapa foto sekaligus. Foto besar
-          otomatis dikompres agar 10 foto muat dalam 1 dokumen Firestore (free
-          tier, limit 1 MB/dok).
+          Bisa pilih beberapa foto sekaligus. Foto otomatis dikecilkan (sisi
+          terpanjang 1600 px) sebelum diunggah. Foto pertama jadi cover.
         </p>
       </div>
 

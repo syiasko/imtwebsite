@@ -4,7 +4,7 @@ import { vehiclePath } from "../utils/slug";
 
 export default function VehicleCard({ vehicle, categoryName }) {
   const { t } = useT();
-  const cover = vehicle.images?.[0];
+  const cover = vehicle.thumbs?.[0];
   return (
     <Link
       to={vehiclePath(vehicle)}
@@ -14,6 +14,7 @@ export default function VehicleCard({ vehicle, categoryName }) {
         {cover ? (
           <img
             src={cover}
+            loading="lazy"
             alt={vehicle.name}
             className="w-full h-full object-cover"
           />

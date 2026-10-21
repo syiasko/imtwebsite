@@ -31,11 +31,8 @@ export default function AdminAccount() {
       setNewPwd("");
       setConfirmPwd("");
     } catch (e2) {
-      const code = e2?.code;
       setErr(
-        code === "auth/invalid-credential" || code === "auth/wrong-password"
-          ? "Password lama salah."
-          : authErrorMessage(e2)
+        e2?.code === "wrong_current_password" ? "Password lama salah." : authErrorMessage(e2)
       );
     } finally {
       setBusy(false);

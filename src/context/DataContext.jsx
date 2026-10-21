@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
@@ -11,29 +12,25 @@ import {
   DEFAULT_MAPS_PLACE_QUERY,
   buildMapsEmbedUrl,
 } from "../data/initialData";
-import {
-  createStaffAccount,
-  deleteCategoryDoc,
-  deleteContactMessage,
-  deleteUserDoc,
-  deleteVehicleDoc,
-  saveCategory,
-  saveCompany,
-  saveGreeting,
-  saveUser,
-  saveVehicle,
-  subscribeCategories,
-  subscribeCompany,
-  subscribeContactMessages,
-  subscribeGreeting,
-  subscribeUsers,
-  subscribeVehicles,
-  updateContactMessageStatus,
-} from "../firebase/api";
+import * as api from "../lib/api";
 import { slugify } from "../utils/slug";
 import { useAuth } from "./AuthContext";
 
 const DataContext = createContext(null);
+
+// Existing company settings from the original seed have a mapsEmbedUrl built
+// from the raw address string, which Google Maps renders without the proper
+// Place pin; swap it for the place-name default at read time.
+const normalizeCompany = (data) => {
+  const merged = { ...initialCompanySettings, ...(data || {}) };
+  const legacyAddressEmbed = `https://maps.google.com/maps?q=${encodeURIComponent(
+    initialCompanySettings.address
+  )}&output=embed`;
+  if (merged.mapsEmbedUrl === legacyAddressEmbed && DEFAULT_MAPS_PLACE_QUERY) {
+    merged.mapsEmbedUrl = buildMapsEmbedUrl(DEFAULT_MAPS_PLACE_QUERY);
+  }
+  return merged;
+};
 
 export function DataProvider({ children }) {
   const { isStaff, isAdmin } = useAuth();
@@ -51,176 +48,175 @@ export function DataProvider({ children }) {
     guestCompany: "",
   });
   const [loading, setLoading] = useState(true);
-  const [firestoreError, setFirestoreError] = useState(null);
+  const [loadError, setLoadError] = useState(null);
+  const vehiclesRef = useRef([]);
+  vehiclesRef.current = vehicles;
 
-  // Public collections: readable by every visitor without signing in.
+  const reload = useMemo(
+    () => ({
+      categories: () => api.fetchCategories().then(setCategories),
+      vehicles: () => api.fetchVehicles().then(setVehicles),
+      company: () => api.fetchCompany().then((d) => setCompany(normalizeCompany(d))),
+      messages: () => api.fetchMessages().then(setMessages),
+      users: () => api.fetchProfiles().then(setUsers),
+    }),
+    []
+  );
+
+  // Public catalog: one query per table, then served from memory.
   useEffect(() => {
-    const onSubError = (err) => {
-      console.error("Firestore subscription error:", err);
-      setFirestoreError(err);
-      setLoading(false);
-    };
+    Promise.all([reload.categories(), reload.vehicles(), reload.company()])
+      .then(() => setLoadError(null))
+      .catch((err) => {
+        console.error("Gagal memuat data:", err);
+        setLoadError(err);
+      })
+      .finally(() => setLoading(false));
+  }, [reload]);
 
-    // Stay in the loading state until every collection the UI reads has
-    // delivered its first snapshot; otherwise screens briefly show empty
-    // lists or the default greeting status.
-    const pending = new Set(["categories", "vehicles", "greeting", "company"]);
-    const markReady = (key) => {
-      if (pending.delete(key) && pending.size === 0) setLoading(false);
-    };
+  // The greeting stays in Firestore because the signage TV reads it there.
+  useEffect(
+    () =>
+      api.subscribeGreeting(
+        (data) => data && setGreeting((prev) => ({ ...prev, ...data })),
+        (err) => console.error("Greeting subscription error:", err)
+      ),
+    []
+  );
 
-    const unsubs = [
-      subscribeCategories((rows) => {
-        setCategories(rows);
-        markReady("categories");
-      }, onSubError),
-      subscribeVehicles((rows) => {
-        setVehicles(rows);
-        markReady("vehicles");
-      }, onSubError),
-      subscribeGreeting((data) => {
-        if (data) {
-          setGreeting((prev) => ({ ...prev, ...data }));
-        }
-        markReady("greeting");
-      }, onSubError),
-      subscribeCompany((data) => {
-        setCompany((prev) => {
-          // passwordHash belongs to the old shared-password login; never keep it.
-          const { passwordHash, ...merged } = {
-            ...initialCompanySettings,
-            ...(data || prev),
-          };
-          // Migration: existing Firestore docs from the original seed have a
-          // mapsEmbedUrl built from the raw address string, which Google
-          // Maps renders without the proper Place pin. If we detect that
-          // legacy URL, swap it for the new place-name-based default at
-          // read time so the public site is immediately correct, without
-          // forcing the admin to re-save settings.
-          const legacyAddressEmbed = `https://maps.google.com/maps?q=${encodeURIComponent(
-            initialCompanySettings.address
-          )}&output=embed`;
-          if (
-            merged.mapsEmbedUrl === legacyAddressEmbed &&
-            DEFAULT_MAPS_PLACE_QUERY
-          ) {
-            merged.mapsEmbedUrl = buildMapsEmbedUrl(DEFAULT_MAPS_PLACE_QUERY);
-          }
-          return merged;
-        });
-        markReady("company");
-        setFirestoreError(null);
-      }, onSubError),
-    ];
-    return () => unsubs.forEach((u) => u());
-  }, []);
-
-  // Staff-only collections; the rules deny these to everyone else.
+  // Staff see live changes (other admins, AI agents) without reloading.
   useEffect(() => {
     if (!isStaff) {
       setMessages([]);
       return undefined;
     }
-    return subscribeContactMessages(
-      (rows) => setMessages(rows),
-      (err) => console.error("Contact messages subscription error:", err)
+    reload.messages().catch((err) => console.error("Pesan gagal dimuat:", err));
+    const byTable = {
+      categories: reload.categories,
+      vehicles: reload.vehicles,
+      contact_messages: reload.messages,
+    };
+    return api.subscribeChanges(Object.keys(byTable), (table) =>
+      byTable[table]().catch((err) => console.error(`Reload ${table} gagal:`, err))
     );
-  }, [isStaff]);
+  }, [isStaff, reload]);
 
   useEffect(() => {
     if (!isAdmin) {
       setUsers([]);
-      return undefined;
+      return;
     }
-    return subscribeUsers(
-      (rows) => setUsers(rows),
-      (err) => console.error("Users subscription error:", err)
-    );
-  }, [isAdmin]);
+    reload.users().catch((err) => console.error("Pengguna gagal dimuat:", err));
+  }, [isAdmin, reload]);
 
   // --- Categories
-  const upsertCategory = useCallback(async (category) => {
-    const slug = slugify(category.slug || category.name);
-    const id = category.id || slug || `cat-${Date.now()}`;
-    const next = {
-      id,
-      name: category.name.trim(),
-      slug,
-      description: category.description?.trim() || "",
-      icon: category.icon || "tag",
-    };
-    await saveCategory(next);
-  }, []);
-  const deleteCategory = useCallback((id) => deleteCategoryDoc(id), []);
+  const upsertCategory = useCallback(
+    async (category) => {
+      const slug = slugify(category.slug || category.name);
+      await api.saveCategory({
+        id: category.id || slug || `cat-${Date.now()}`,
+        name: category.name.trim(),
+        slug,
+        description: category.description?.trim() || "",
+        icon: category.icon || "tag",
+      });
+      await reload.categories();
+    },
+    [reload]
+  );
+  const deleteCategory = useCallback(
+    async (id) => {
+      await api.deleteCategory(id);
+      await Promise.all([reload.categories(), reload.vehicles()]);
+    },
+    [reload]
+  );
 
   // --- Vehicles
-  const upsertVehicle = useCallback(async (vehicle) => {
-    const id = vehicle.id || `v-${Date.now()}`;
-    const baseSlug = slugify(vehicle.slug || vehicle.name || id);
-    const next = {
-      id,
-      slug: baseSlug,
-      name: vehicle.name.trim(),
-      categoryId: vehicle.categoryId,
-      tagline: vehicle.tagline?.trim() || "",
-      description: vehicle.description?.trim() || "",
-      youtubeUrl: vehicle.youtubeUrl?.trim() || "",
-      images:
-        Array.isArray(vehicle.images) && vehicle.images.length > 0
-          ? vehicle.images
-          : [],
-      specs: vehicle.specs || {},
-      features: Array.isArray(vehicle.features) ? vehicle.features : [],
-    };
-    await saveVehicle(next);
-    return next;
-  }, []);
-  const deleteVehicle = useCallback((id) => deleteVehicleDoc(id), []);
+  const upsertVehicle = useCallback(
+    async (vehicle) => {
+      const id = vehicle.id || `v-${Date.now()}`;
+      const next = {
+        id,
+        slug: slugify(vehicle.slug || vehicle.name || id),
+        name: vehicle.name.trim(),
+        categoryId: vehicle.categoryId,
+        tagline: vehicle.tagline?.trim() || "",
+        description: vehicle.description?.trim() || "",
+        youtubeUrl: vehicle.youtubeUrl?.trim() || "",
+        images: Array.isArray(vehicle.images) ? vehicle.images : [],
+        specs: vehicle.specs || {},
+        features: Array.isArray(vehicle.features) ? vehicle.features : [],
+      };
+      const before = vehiclesRef.current.find((v) => v.id === id);
+      await api.saveVehicle(next);
+      // Photos removed in the form are deleted from storage once saved.
+      const removed = (before?.images || []).filter((src) => !next.images.includes(src));
+      if (removed.length) api.deleteMedia(removed).catch(() => {});
+      await reload.vehicles();
+      return next;
+    },
+    [reload]
+  );
+  const deleteVehicle = useCallback(
+    async (vehicle) => {
+      await api.deleteVehicle(vehicle);
+      await reload.vehicles();
+    },
+    [reload]
+  );
 
   // --- Company
   const updateCompany = useCallback(
-    (patch) => saveCompany({ ...company, ...patch }),
-    [company]
+    async (patch) => {
+      await api.saveCompany(patch);
+      await reload.company();
+    },
+    [reload]
   );
 
-  // --- Greeting
-  const updateGreeting = useCallback(
-    (patch) => saveGreeting({ ...greeting, ...patch }),
-    [greeting]
-  );
+  // --- Greeting (written server-side to Firestore for the signage TV)
+  const updateGreeting = useCallback((patch) => api.saveGreeting(patch), []);
 
-  // --- Users
-  // Passwords live in Firebase Auth. A new user gets an Auth account plus a
-  // users/{uid} profile; editing only changes name and role.
+  // --- Users (accounts are managed server-side, see api/admin-users.js)
   const upsertUser = useCallback(
     async ({ id, username, name, role, password }) => {
-      const cleanUsername = username?.trim().toLowerCase();
-      if (!cleanUsername) throw new Error("Username wajib diisi.");
-      const now = new Date().toISOString();
-      const uid = id || (await createStaffAccount(cleanUsername, password));
-      const next = {
-        id: uid,
-        username: cleanUsername,
-        name: name?.trim() || cleanUsername,
-        role: role === "editor" ? "editor" : "admin",
-        updatedAt: now,
-      };
-      if (!id) next.createdAt = now;
-      await saveUser(next);
-      return next;
+      const result = await api.adminUsers(
+        id
+          ? { action: "update", id, name, role }
+          : { action: "create", username, name, role, password }
+      );
+      await reload.users();
+      return result;
     },
+    [reload]
+  );
+  const deleteUser = useCallback(
+    async (id) => {
+      await api.adminUsers({ action: "delete", id });
+      await reload.users();
+    },
+    [reload]
+  );
+  const resetUserPassword = useCallback(
+    (id, password) => api.adminUsers({ action: "reset-password", id, password }),
     []
   );
-  const deleteUser = useCallback((id) => deleteUserDoc(id), []);
 
   // --- Contact messages
   const setMessageStatus = useCallback(
-    (id, status) => updateContactMessageStatus(id, status),
-    []
+    async (id, status) => {
+      await api.updateMessageStatus(id, status);
+      await reload.messages();
+    },
+    [reload]
   );
   const deleteMessage = useCallback(
-    (id) => deleteContactMessage(id),
-    []
+    async (id) => {
+      await api.deleteMessage(id);
+      await reload.messages();
+    },
+    [reload]
   );
 
   const value = useMemo(
@@ -232,7 +228,7 @@ export function DataProvider({ children }) {
       company,
       greeting,
       loading,
-      firestoreError,
+      loadError,
       upsertCategory,
       deleteCategory,
       upsertVehicle,
@@ -241,6 +237,7 @@ export function DataProvider({ children }) {
       updateGreeting,
       upsertUser,
       deleteUser,
+      resetUserPassword,
       setMessageStatus,
       deleteMessage,
     }),
@@ -252,7 +249,7 @@ export function DataProvider({ children }) {
       company,
       greeting,
       loading,
-      firestoreError,
+      loadError,
       upsertCategory,
       deleteCategory,
       upsertVehicle,
@@ -261,6 +258,7 @@ export function DataProvider({ children }) {
       updateGreeting,
       upsertUser,
       deleteUser,
+      resetUserPassword,
       setMessageStatus,
       deleteMessage,
     ]

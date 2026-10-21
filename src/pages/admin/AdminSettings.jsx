@@ -1,6 +1,9 @@
 import { useEffect, useId, useState } from "react";
 import { useData } from "../../context/DataContext";
 import { AccessDenied, useIsAdmin } from "../Admin";
+import { uploadCatalogPdf } from "../../lib/api";
+import { MAX_PDF_BYTES } from "../../lib/media";
+import { MEDIA_BASE_URL } from "../../lib/supabase";
 import {
   DEFAULT_MAPS_PLACE_QUERY,
   buildMapsEmbedUrl,
@@ -24,6 +27,7 @@ function AdminSettingsInner() {
   const [draft, setDraft] = useState(company);
   const [savingMsg, setSavingMsg] = useState("");
   const [savingErr, setSavingErr] = useState("");
+  const [uploadingPdf, setUploadingPdf] = useState(false);
   const addressId = useId();
   const embedId = useId();
 
@@ -69,30 +73,29 @@ function AdminSettingsInner() {
     }));
   };
 
-  const onUploadCatalog = (e) => {
+  const onUploadCatalog = async (e) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
     if (file.type !== "application/pdf") {
       setSavingErr("File harus berformat PDF.");
       return;
     }
-    if (file.size > 800 * 1024) {
-      setSavingErr(
-        "PDF maks 800KB (disimpan di Firestore). Untuk file lebih besar, host PDF di Drive/Dropbox lalu paste URL-nya."
-      );
+    if (file.size > MAX_PDF_BYTES) {
+      setSavingErr("PDF maksimal 20 MB. Kompres dulu atau pakai URL eksternal.");
       return;
     }
     setSavingErr("");
-    const reader = new FileReader();
-    reader.onload = () => {
-      setDraft((d) => ({
-        ...d,
-        catalogPdfUrl: reader.result,
-        catalogPdfName: file.name,
-      }));
-    };
-    reader.readAsDataURL(file);
-    e.target.value = "";
+    setUploadingPdf(true);
+    try {
+      const url = await uploadCatalogPdf(file);
+      setDraft((d) => ({ ...d, catalogPdfUrl: url, catalogPdfName: file.name }));
+      setSavingMsg("PDF terunggah. Klik Simpan agar dipakai di website.");
+    } catch (err) {
+      setSavingErr("Gagal mengunggah PDF: " + (err?.message || ""));
+    } finally {
+      setUploadingPdf(false);
+    }
   };
 
   const removeCatalog = () =>
@@ -253,7 +256,7 @@ function AdminSettingsInner() {
         <div>
           <h2 className="text-lg font-bold text-slate-900">Katalog PDF</h2>
           <p className="text-sm text-slate-600">
-            Upload PDF (maks 800KB) atau paste URL eksternal. Tombol "Download
+            Upload PDF (maks 20 MB) atau paste URL eksternal. Tombol "Download
             Katalog" di halaman publik akan memakai file ini.
           </p>
         </div>
@@ -290,8 +293,9 @@ function AdminSettingsInner() {
           <div className="flex flex-wrap gap-3 items-center">
             {/* sr-only (not display:none) keeps the file input reachable by Tab */}
             <label className="cursor-pointer text-sm font-medium px-4 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 focus-within:ring-2 focus-within:ring-primary-600">
-              Upload PDF
+              {uploadingPdf ? "Mengunggah..." : "Upload PDF"}
               <input
+                disabled={uploadingPdf}
                 type="file"
                 accept="application/pdf"
                 onChange={onUploadCatalog}
@@ -304,7 +308,10 @@ function AdminSettingsInner() {
               aria-label="URL PDF eksternal"
               placeholder="URL PDF eksternal"
               value={
-                draft.catalogPdfUrl?.startsWith("data:") ? "" : draft.catalogPdfUrl
+                draft.catalogPdfUrl?.startsWith("data:") ||
+                (MEDIA_BASE_URL && draft.catalogPdfUrl?.startsWith(MEDIA_BASE_URL))
+                  ? ""
+                  : draft.catalogPdfUrl
               }
               onChange={(e) =>
                 setDraft((d) => ({

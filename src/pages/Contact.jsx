@@ -2,7 +2,7 @@ import { useId, useRef, useState } from "react";
 import { useData } from "../context/DataContext";
 import { useT } from "../context/LanguageContext";
 import { trackEvent } from "../firebase/config";
-import { saveContactMessage } from "../firebase/api";
+import { saveContactMessage } from "../lib/api";
 import { useToast } from "../context/ToastContext";
 import Modal from "../components/Modal";
 

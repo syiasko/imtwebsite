@@ -1,24 +1,23 @@
-// MCP tools for managing the IMT website content. Shared by the local stdio
-// server (mcp/server.mjs) and the hosted endpoint (api/mcp.js); each passes a
-// `store` backend and a `session` resolver for the acting panel user.
+// MCP tools for managing the IMT website content, served by api/mcp.js. The
+// acting panel user comes from the AI token (ctx.session).
 //
-// Role rules match the admin panel and firestore.rules: an editor manages
-// categories, vehicles and messages; settings, greeting, deleting messages and
-// users need an admin. The hosted endpoint uses the Admin SDK, which bypasses
-// Firestore rules, so these checks are what enforces roles there.
-import { readFile, stat } from "node:fs/promises";
-import { basename } from "node:path";
+// Role rules match the admin panel and the database policies: an editor
+// manages categories, vehicles and messages; settings, greeting, deleting
+// messages and users need an admin. Queries run with the service-role key,
+// which bypasses row level security, so these checks are what enforce roles.
 import { z } from "zod";
 import sharp from "sharp";
 import { slugify } from "../src/utils/slug.js";
 import { buildMapsEmbedUrl } from "../src/data/initialData.js";
+import { MAX_PHOTOS, PHOTO_FULL, PHOTO_SMALL, mediaKey, mediaUrl } from "../src/lib/media.js";
+import { must, supabaseAdmin } from "../server/supabase.mjs";
+import { deleteMediaKeys, newPhotoKey, putObject, smallKey } from "../server/r2.mjs";
+import { readGreeting, writeGreeting } from "../server/greeting.mjs";
+import { ROLES, createStaffUser } from "../server/users.mjs";
 
-// Same limits as the admin panel (AdminVehicles / imageCompression / AdminSettings).
-const MAX_IMAGES = 10;
-const MAX_IMAGE_BYTES = 90 * 1024;
-const MAX_IMAGE_DIM = 1280;
-const MAX_PDF_BYTES = 800 * 1024;
-const VEHICLE_DOC_BUDGET = 1000 * 1024; // Firestore caps a document at 1 MiB
+// Public CDN domain of the R2 bucket (R2 custom domain, not r2.dev, which
+// some Indonesian ISPs block). A site-relative base is made absolute below.
+const MEDIA_BASE_URL = process.env.MEDIA_BASE_URL || process.env.VITE_MEDIA_BASE_URL || "";
 
 const STATUS_NEW = "New";
 const STATUSES = [STATUS_NEW, "Read", "Replied"];
@@ -48,62 +47,132 @@ const handler = (fn) => async (args) => {
   }
 };
 
-const imageSummary = (src, index) =>
-  src?.startsWith("data:")
-    ? { index, type: "uploaded", sizeKB: Math.round(src.length / 1024) }
-    : { index, type: "url", url: src };
+const imageSummary = (base) => (src, index) =>
+  /^https?:/.test(src)
+    ? { index, type: "url", url: src }
+    : { index, type: "uploaded", url: mediaUrl(base, src) };
 
 const vehiclePath = (v) => `/produk/${v.slug || slugify(v.name) || v.id}`;
 
-const docSize = (obj) => Buffer.byteLength(JSON.stringify(obj), "utf8");
+const toDate = (ts) => (ts ? new Date(ts).toISOString() : null);
 
-const toDate = (ts) => ts?.toDate?.().toISOString() || null;
-
-// Mirrors the browser compressor: JPEG, longest side <= 1280, shrink quality
-// then dimensions until the data URL fits in ~90 KB.
-export const compressImage = async (input) => {
-  const meta = await sharp(input).metadata();
-  const asIs = `data:image/${meta.format};base64,${input.toString("base64")}`;
-  if (asIs.length <= MAX_IMAGE_BYTES && ["jpeg", "png", "webp"].includes(meta.format)) {
-    return asIs;
-  }
-  let dim = Math.min(MAX_IMAGE_DIM, Math.max(meta.width || 0, meta.height || 0) || MAX_IMAGE_DIM);
+// Mirrors the panel (src/utils/imageCompression.js): JPEG in a full and a
+// small size, shrinking quality then dimensions to fit each byte budget.
+const encodeJpeg = async (input, { maxDim, maxBytes }) => {
+  let dim = maxDim;
   let quality = 85;
-  let out = "";
+  let buf = null;
   for (let i = 0; i < 14; i++) {
-    const buf = await sharp(input)
+    buf = await sharp(input)
       .rotate()
       .resize({ width: dim, height: dim, fit: "inside", withoutEnlargement: true })
       .flatten({ background: "#ffffff" })
       .jpeg({ quality })
       .toBuffer();
-    out = `data:image/jpeg;base64,${buf.toString("base64")}`;
-    if (out.length <= MAX_IMAGE_BYTES) return out;
-    if (quality > 50) quality = Math.max(50, quality - 10);
-    else if (dim > 480) {
+    if (buf.length <= maxBytes) return buf;
+    if (quality > 60) quality = Math.max(60, quality - 8);
+    else {
       dim = Math.round(dim * 0.85);
-      quality = 70;
-    } else {
-      dim = Math.max(360, Math.round(dim * 0.85));
-      quality = Math.max(40, quality - 5);
+      quality = 75;
     }
   }
-  return out;
+  return buf;
+};
+
+export const preparePhoto = async (input) => {
+  await sharp(input).metadata(); // throws on non-images
+  const [full, small] = await Promise.all([
+    encodeJpeg(input, PHOTO_FULL),
+    encodeJpeg(input, PHOTO_SMALL),
+  ]);
+  return { full, small };
+};
+
+// Collection-style access over the Supabase tables, so each tool reads like
+// the panel's data model (camelCase vehicles, profiles as "users").
+const toVehicle = (r) => ({
+  id: r.id,
+  slug: r.slug,
+  name: r.name,
+  categoryId: r.category_id,
+  tagline: r.tagline,
+  description: r.description,
+  youtubeUrl: r.youtube_url,
+  images: r.images || [],
+  specs: r.specs || {},
+  features: r.features || [],
+});
+const fromVehicle = (v) => ({
+  id: v.id,
+  slug: v.slug,
+  name: v.name,
+  category_id: v.categoryId,
+  tagline: v.tagline || "",
+  description: v.description || "",
+  youtube_url: v.youtubeUrl || "",
+  images: (v.images || []).map((src) => mediaKey(MEDIA_BASE_URL, src)),
+  specs: v.specs || {},
+  features: v.features || [],
+});
+const TABLE = { users: "profiles" };
+const ORDER = { contact_messages: ["created_at", { ascending: false }], users: ["username"] };
+
+const store = {
+  list: async (name) => {
+    const [col, opts] = ORDER[name] || ["id"];
+    const rows = must(await supabaseAdmin().from(TABLE[name] || name).select("*").order(col, opts));
+    return name === "vehicles" ? rows.map(toVehicle) : rows;
+  },
+  get: async (name, id) => {
+    if (name === "settings") {
+      if (id === "greeting") return readGreeting();
+      return must(await supabaseAdmin().from("settings").select("data").eq("id", id).maybeSingle())?.data || null;
+    }
+    const row = must(await supabaseAdmin().from(TABLE[name] || name).select("*").eq("id", id).maybeSingle());
+    return row && name === "vehicles" ? toVehicle(row) : row;
+  },
+  set: async (name, id, data) => {
+    if (name === "vehicles") return must(await supabaseAdmin().from("vehicles").upsert(fromVehicle(data)));
+    if (name === "users") {
+      return must(await supabaseAdmin().from("profiles").update({ name: data.name, role: data.role }).eq("id", id));
+    }
+    return must(await supabaseAdmin().from(name).upsert(data));
+  },
+  merge: async (name, id, patch) => {
+    if (id === "greeting") return writeGreeting(patch);
+    const current = (await store.get(name, id)) || {};
+    return must(await supabaseAdmin().from("settings").upsert({ id, data: { ...current, ...patch } }));
+  },
+  remove: async (name, id) => {
+    if (name === "users") {
+      const { error } = await supabaseAdmin().auth.admin.deleteUser(id);
+      if (error) throw error;
+      return;
+    }
+    const gone = must(await supabaseAdmin().from(name).delete().eq("id", id).select());
+    if (name === "vehicles") await deleteMediaKeys(gone.flatMap((r) => r.images || []));
+  },
+  deleteCategory: async (id) => {
+    const units = must(await supabaseAdmin().from("vehicles").select("images").eq("category_id", id));
+    must(await supabaseAdmin().from("categories").delete().eq("id", id)); // vehicles cascade
+    await deleteMediaKeys(units.flatMap((u) => u.images || []));
+  },
+  setMessageStatus: async (id, status) =>
+    must(await supabaseAdmin().from("contact_messages").update({ status }).eq("id", id)),
 };
 
 /**
  * @param {import("@modelcontextprotocol/sdk/server/mcp.js").McpServer} server
  * @param {{
- *   store: object,
  *   session: () => Promise<{ uid: string, username: string, role: string }>,
  *   siteUrl?: string,
- *   localFiles?: boolean,
  *   environment?: object,
  * }} ctx
  */
 export function registerTools(server, ctx) {
-  const { store, session, localFiles = false } = ctx;
+  const { session } = ctx;
   const SITE_URL = (ctx.siteUrl || "").replace(/\/$/, "");
+  const PUBLIC_MEDIA = MEDIA_BASE_URL.startsWith("/") ? SITE_URL + MEDIA_BASE_URL : MEDIA_BASE_URL;
 
   const requireAdmin = async () => {
     const s = await session();
@@ -265,7 +334,7 @@ export function registerTools(server, ctx) {
       const v = await findVehicle(id);
       return {
         ...v,
-        images: (v.images || []).map(imageSummary),
+        images: (v.images || []).map(imageSummary(PUBLIC_MEDIA)),
         url: `${SITE_URL}${vehiclePath(v)}`,
       };
     })
@@ -326,67 +395,51 @@ export function registerTools(server, ctx) {
     })
   );
 
-  const photoInputs = {
-    id: z.string().describe("Vehicle id or slug"),
-    urls: z.array(z.string().url()).optional().describe("Public https image URLs to link"),
-    base64: z
-      .array(z.string())
-      .optional()
-      .describe("Image file contents as base64 (or data: URLs); compressed before saving"),
-    asCover: z.boolean().optional().describe("Put the new photos first"),
-  };
-  if (localFiles) {
-    photoInputs.files = z
-      .array(z.string())
-      .optional()
-      .describe("Absolute paths of image files on this computer");
-  }
-
   server.registerTool(
     "add_vehicle_photos",
     {
-      description: `Add photos to a vehicle${localFiles ? " from local image files (jpg/png/webp)," : ""} from base64 image data, or by linking public image URLs. Images are compressed like the admin panel (max ${MAX_IMAGE_DIM}px, ~90 KB). Max ${MAX_IMAGES} photos per vehicle; the first photo is the cover.`,
-      inputSchema: photoInputs,
+      description: `Add photos to a vehicle from base64 image data (jpg/png/webp; read the user's file and send its contents) or by linking public image URLs. Uploaded images are resized like the admin panel (max ${PHOTO_FULL.maxDim}px) and served from the CDN. Max ${MAX_PHOTOS} photos per vehicle; the first photo is the cover.`,
+      inputSchema: {
+        id: z.string().describe("Vehicle id or slug"),
+        base64: z
+          .array(z.string())
+          .optional()
+          .describe("Image file contents as base64 (or data: URLs)"),
+        urls: z.array(z.string().url()).optional().describe("Public https image URLs to link"),
+        asCover: z.boolean().optional().describe("Put the new photos first"),
+      },
       annotations: writes,
     },
-    handler(async ({ id, files = [], urls = [], base64 = [], asCover }) => {
+    handler(async ({ id, urls = [], base64 = [], asCover }) => {
       await session();
       const v = await findVehicle(id);
       const existing = v.images || [];
-      const count = files.length + urls.length + base64.length;
-      if (!count) throw new Error("Isi salah satu: files, base64, atau urls.");
-      if (existing.length + count > MAX_IMAGES) {
+      const count = urls.length + base64.length;
+      if (!count) throw new Error("Isi salah satu: base64 atau urls.");
+      if (existing.length + count > MAX_PHOTOS) {
         throw new Error(
-          `Unit ini sudah punya ${existing.length} foto; maksimal ${MAX_IMAGES}. Hapus sebagian dengan arrange_vehicle_photos.`
+          `Unit ini sudah punya ${existing.length} foto; maksimal ${MAX_PHOTOS}. Hapus sebagian dengan arrange_vehicle_photos.`
         );
       }
       const added = [];
-      for (const f of files) {
-        const info = await stat(f).catch(() => null);
-        if (!info?.isFile()) throw new Error(`File tidak ditemukan: ${f}`);
-        added.push(await compressImage(await readFile(f)));
-      }
+      const sizesKB = [];
       for (const b of base64) {
         const buf = Buffer.from(b.replace(/^data:[^,]*,/, ""), "base64");
-        added.push(
-          await compressImage(buf).catch(() => {
-            throw new Error("Data base64 bukan gambar yang valid.");
-          })
-        );
+        const photo = await preparePhoto(buf).catch(() => {
+          throw new Error("Data base64 bukan gambar yang valid.");
+        });
+        const key = newPhotoKey(v.id);
+        await Promise.all([
+          putObject(key, photo.full, "image/jpeg"),
+          putObject(smallKey(key), photo.small, "image/jpeg"),
+        ]);
+        added.push(key);
+        sizesKB.push(Math.round(photo.full.length / 1024));
       }
       added.push(...urls);
       const images = asCover ? [...added, ...existing] : [...existing, ...added];
-      const next = { ...v, images };
-      if (docSize(next) > VEHICLE_DOC_BUDGET) {
-        throw new Error("Total ukuran foto melebihi batas 1 MB per unit di Firestore. Kurangi jumlah foto.");
-      }
-      await store.set("vehicles", v.id, next);
-      return {
-        vehicle: v.name,
-        added: added.length,
-        totalPhotos: images.length,
-        sizesKB: added.map((a) => (a.startsWith("data:") ? Math.round(a.length / 1024) : "url")),
-      };
+      await store.set("vehicles", v.id, { ...v, images });
+      return { vehicle: v.name, added: added.length, totalPhotos: images.length, sizesKB };
     })
   );
 
@@ -409,6 +462,7 @@ export function registerTools(server, ctx) {
       if (bad.length) throw new Error(`Index foto tidak ada: ${bad.join(", ")} (unit ini punya ${images.length} foto).`);
       if (new Set(keep).size !== keep.length) throw new Error("Index foto tidak boleh dobel.");
       await store.set("vehicles", v.id, { ...v, images: keep.map((i) => images[i]) });
+      await deleteMediaKeys(images.filter((_, i) => !keep.includes(i)));
       return { vehicle: v.name, photos: keep.length, removed: images.length - keep.length };
     })
   );
@@ -458,11 +512,7 @@ export function registerTools(server, ctx) {
       const { passwordHash, catalogPdfUrl, ...rest } = (await store.get("settings", "company")) || {};
       return {
         ...rest,
-        catalogPdf: catalogPdfUrl
-          ? catalogPdfUrl.startsWith("data:")
-            ? `uploaded file (${Math.round(catalogPdfUrl.length / 1024)} KB)`
-            : catalogPdfUrl
-          : "none (website uses the printable catalog)",
+        catalogPdf: catalogPdfUrl || "none (website uses the printable catalog)",
       };
     })
   );
@@ -491,44 +541,27 @@ export function registerTools(server, ctx) {
     })
   );
 
-  const pdfInputs = {
-    url: z.string().url().optional().describe("External PDF URL (e.g. Google Drive)"),
-    clear: z.boolean().optional(),
-  };
-  if (localFiles) pdfInputs.file = z.string().optional().describe("Absolute path to a PDF file");
-
   server.registerTool(
     "set_catalog_pdf",
     {
-      description: `Set the downloadable catalog (admin only): ${localFiles ? "upload a local PDF (max 800 KB), " : ""}link an external PDF URL, or clear it so the site falls back to the printable catalog.`,
-      inputSchema: pdfInputs,
+      description:
+        "Set the downloadable catalog (admin only): link a PDF URL, or clear it so the site falls back to the printable catalog. To upload a new PDF file, use the panel's Company Setting page.",
+      inputSchema: {
+        url: z.string().url().optional().describe("PDF URL (e.g. Google Drive)"),
+        clear: z.boolean().optional(),
+      },
       annotations: writes,
     },
-    handler(async ({ file, url, clear }) => {
+    handler(async ({ url, clear }) => {
       await requireAdmin();
-      if ([file, url, clear].filter(Boolean).length !== 1) {
-        throw new Error(`Isi salah satu: ${localFiles ? "file, " : ""}url, atau clear.`);
-      }
-      if (clear) {
-        await store.merge("settings", "company", { catalogPdfUrl: "", catalogPdfName: "" });
-        return "Katalog PDF dihapus; website memakai katalog cetak.";
-      }
-      if (url) {
-        await store.merge("settings", "company", { catalogPdfUrl: url, catalogPdfName: url });
-        return { catalog: url };
-      }
-      const buf = await readFile(file);
-      if (buf.subarray(0, 4).toString() !== "%PDF") throw new Error("File bukan PDF.");
-      if (buf.length > MAX_PDF_BYTES) {
-        throw new Error(
-          `PDF ${Math.round(buf.length / 1024)} KB, maksimal 800 KB. Kompres dulu atau pakai url.`
-        );
-      }
+      if (!url === !clear) throw new Error("Isi salah satu: url atau clear.");
+      const previous = (await store.get("settings", "company"))?.catalogPdfUrl || "";
       await store.merge("settings", "company", {
-        catalogPdfUrl: `data:application/pdf;base64,${buf.toString("base64")}`,
-        catalogPdfName: basename(file),
+        catalogPdfUrl: clear ? "" : url,
+        catalogPdfName: clear ? "" : decodeURIComponent(new URL(url).pathname.split("/").pop() || "katalog.pdf"),
       });
-      return { catalog: basename(file), sizeKB: Math.round(buf.length / 1024) };
+      await deleteMediaKeys([mediaKey(MEDIA_BASE_URL, previous)]);
+      return clear ? "Katalog PDF dihapus; website memakai katalog cetak." : { catalog: url };
     })
   );
 
@@ -678,37 +711,14 @@ export function registerTools(server, ctx) {
         username: z.string().regex(/^[a-z0-9._-]+$/, "huruf kecil, angka, titik, garis bawah, tanda hubung"),
         password: z.string().min(6),
         name: z.string().optional(),
-        role: z.enum(["admin", "editor"]),
+        role: z.enum(ROLES),
       },
       annotations: writes,
     },
     handler(async ({ username, password, name, role }) => {
       await requireAdmin();
-      const users = await store.list("users");
-      if (users.some((u) => u.username === username)) {
-        throw new Error(`Username "${username}" sudah dipakai.`);
-      }
-      let uid;
-      try {
-        uid = await store.createAuthUser(username, password);
-      } catch (err) {
-        if (/email-already-(in-use|exists)/.test(err?.code || "")) {
-          throw new Error(
-            `Username "${username}" sudah terdaftar di Firebase Auth. Pakai username lain, atau hapus akun lamanya di Firebase Console.`
-          );
-        }
-        throw err;
-      }
-      const now = new Date().toISOString();
-      await store.set("users", uid, {
-        id: uid,
-        username,
-        name: name?.trim() || username,
-        role,
-        createdAt: now,
-        updatedAt: now,
-      });
-      return { created: username, role };
+      const created = await createStaffUser({ username, password, name, role });
+      return { created: created.username, role };
     })
   );
 

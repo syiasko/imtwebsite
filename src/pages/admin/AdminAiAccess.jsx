@@ -4,10 +4,11 @@ import { useData } from "../../context/DataContext";
 import { useToast } from "../../context/ToastContext";
 import { ConfirmDialog } from "../../components/Modal";
 import {
-  createAiTokenDoc,
-  deleteAiTokenDoc,
-  subscribeAiTokens,
-} from "../../firebase/api";
+  createAiToken,
+  deleteAiToken,
+  fetchAiTokens,
+  subscribeChanges,
+} from "../../lib/api";
 import { ACTIVE_WINDOW_MS, generateToken } from "../../utils/aiToken";
 
 const EXPIRY_OPTIONS = [
@@ -47,18 +48,18 @@ export default function AdminAiAccess() {
   const nameId = useId();
   const expiryId = useId();
 
-  useEffect(
-    () =>
-      subscribeAiTokens(
-        isAdmin ? null : uid,
-        (rows) => {
+  // The database policies already limit editors to their own tokens.
+  useEffect(() => {
+    const load = () =>
+      fetchAiTokens()
+        .then((rows) => {
           setTokens(rows);
           setLoadError("");
-        },
-        (err) => setLoadError(err.message || "Gagal memuat token.")
-      ),
-    [uid, isAdmin]
-  );
+        })
+        .catch((err) => setLoadError(err.message || "Gagal memuat token."));
+    load();
+    return subscribeChanges(["ai_tokens"], load);
+  }, [uid, isAdmin]);
 
   // Keep the "Aktif" badges honest without a reload.
   useEffect(() => {
@@ -94,14 +95,8 @@ export default function AdminAiAccess() {
       const expiresAt = expiry
         ? new Date(createdAt.getTime() + Number(expiry) * 86400000).toISOString()
         : null;
-      await createAiTokenDoc(id, {
-        uid,
-        name: label,
-        prefix,
-        tokenHash,
-        createdAt: createdAt.toISOString(),
-        expiresAt,
-      });
+      await createAiToken({ id, uid, name: label, prefix, tokenHash, expiresAt });
+      setTokens(await fetchAiTokens());
       setCreated({ name: label, token });
       setName("");
     } catch (err) {
@@ -116,7 +111,8 @@ export default function AdminAiAccess() {
     setConfirmRevoke(null);
     if (!t) return;
     try {
-      await deleteAiTokenDoc(t.id);
+      await deleteAiToken(t.id);
+      setTokens((prev) => prev?.filter((x) => x.id !== t.id) || prev);
       toast.info(`Token "${t.name}" dicabut.`);
     } catch (err) {
       toast.error("Gagal mencabut token: " + (err?.message || ""));
